@@ -1,5 +1,5 @@
 cc.out: main.c
-	gcc main.c -o cc.out
+	gcc -std=c11 -Wall main.c -o cc.out
 
 .PHONY: test
 test: cc.out

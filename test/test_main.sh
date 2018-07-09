@@ -2,7 +2,7 @@
 
 total=0
 
-unit_test() {
+runtest() {
   echo $1 | ./cc.out > test.s
   gcc test.s -o test.out
   ./test.out
@@ -13,11 +13,21 @@ unit_test() {
   else
     echo "Test $total: Failed"
     echo "\tExpected: $expected, Actual: $actual"
+    exit 1
   fi
   total=`echo "$total+1" | bc`
   rm -f test.s test.out
 }
 
-unit_test 0 0
-unit_test 2 2
-unit_test 9 9
+echo '=== number ==='
+runtest 0 0
+runtest 2 2
+runtest 9 9
+
+echo '=== expression ==='
+runtest '1 + 2' 3
+runtest '2 - 1' 1
+runtest '1 + 2 + 3' 6
+runtest '3 - 2 - 1' 0
+runtest '5 + 6 - 3' 8
+runtest '3 + 5 - 3 + 6' 11
