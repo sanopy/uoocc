@@ -69,16 +69,38 @@ Ast *read_number(void) {
   return make_ast_int(num);
 }
 
+Ast *expr(void);
+
+// <factor> = <number> | '(' <expr> ')'
+Ast *factor(void) {
+  skip();
+  char c = getc(stdin);
+
+  Ast *ret;
+  if (c == '(') {
+    ret = expr();
+    skip();
+    c = getc(stdin);
+    if (c != ')')
+      error("')' was expected");
+  } else {
+    ungetc(c, stdin);
+    ret = read_number();
+  }
+
+  return ret;
+}
+
 /*
-  <term> = <number> <term_tail>
-  <term_tail> = ε | '*' <number> <term_tail> | '/' <number> <term_tail>
+  <term> = <factor> <term_tail>
+  <term_tail> = ε | '*' <factor> <term_tail> | '/' <factor> <term_tail>
 */
 Ast *term_tail(Ast *left) {
   skip();
   char c = getc(stdin);
 
   if (c == '*' || c == '/') {
-    Ast *right = read_number();
+    Ast *right = factor();
     int ast_op = c == '*' ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right);
     return term_tail(p);
@@ -89,7 +111,7 @@ Ast *term_tail(Ast *left) {
 }
 
 Ast *term(void) {
-  Ast *val = read_number();
+  Ast *val = factor();
   return term_tail(val);
 }
 
@@ -106,12 +128,10 @@ Ast *expr_tail(Ast *left) {
     int ast_op = c == '+' ? AST_OP_ADD : AST_OP_SUB;
     Ast *p = make_ast_op(ast_op, left, right);
     return expr_tail(p);
-  } else if (c == '\n' || c == EOF)
+  } else {
+    ungetc(c, stdin);
     return left;
-  else
-    error("unexpected character was inputted");
-
-  return NULL; // NOTE: To avoid warning. Actually, cannot reach here.
+  }
 }
 
 Ast *expr(void) {

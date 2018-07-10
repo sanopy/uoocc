@@ -40,3 +40,8 @@ runtest '1 + 2 * 3' 7
 runtest '1 / 2 + 3' 3
 runtest '1 + 2 / 3' 1
 runtest '1 * 2 + 3 + 4 * 5 * 6 / 7' 22
+
+echo "=== expression (include '(', ')') ==="
+runtest '6 - (5 - 4)' 5
+runtest '(1 + 2) * 3' 9
+runtest '(1 + 2) * 3 + (4 + 5 + 6) * 2' 39
