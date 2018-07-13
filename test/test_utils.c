@@ -9,9 +9,8 @@ void test_vector(void) {
 
   int times = 64;
   for (int i = 0; i < times; i++) {
-    int *p = malloc(sizeof(int));
-    *p = i;
-    assert(vector_push_back(v, p) == 1);
+    assert(vector_push_back(v, allocate_integer(i)) == 1);
+    assert(v->size == i+1);
   }
 
   for (int i = 0; i < times; i++) {
@@ -20,8 +19,32 @@ void test_vector(void) {
   }
 }
 
+void test_map(void) {
+  MapEntry *e;
+  Map *m = map_new();
+
+  assert(m != NULL);
+
+  e = allocate_MapEntry(allocate_string("abc"), allocate_integer(1));
+  assert(map_put(m, e) == 1);
+  e = allocate_MapEntry(allocate_string("xyz"), allocate_integer(2));
+  assert(map_put(m, e) == 1);
+  e = allocate_MapEntry(allocate_string("a"), allocate_integer(3));
+  assert(map_put(m, e) == 1);
+  e = allocate_MapEntry(allocate_string("123"), allocate_integer(4));
+  assert(map_put(m, e) == 1);
+
+  assert(*(int *)(map_get(m, "abc")->val) == 1);
+  assert(*(int *)(map_get(m, "xyz")->val) == 2);
+  assert(*(int *)(map_get(m, "a")->val) == 3);
+  assert(*(int *)(map_get(m, "123")->val) == 4);
+
+  assert(map_get(m, "hoge") == NULL);
+}
+
 int main(void) {
   test_vector();
+  test_map();
 
   return 0;
 }
