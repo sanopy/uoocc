@@ -9,7 +9,7 @@ void test_vector(void) {
 
   int times = 64;
   for (int i = 0; i < times; i++) {
-    assert(vector_push_back(v, allocate_integer(i)) == 1);
+    assert(vector_push_back(v, (void *)allocate_integer(i)) == 1);
     assert(v->size == i+1);
   }
 
@@ -17,6 +17,9 @@ void test_vector(void) {
     int *p = (int *)vector_at(v, i);
     assert(*p == i);
   }
+
+  assert(vector_at(v, -1) == NULL);
+  assert(vector_at(v, times) == NULL);
 }
 
 void test_map(void) {
@@ -25,13 +28,13 @@ void test_map(void) {
 
   assert(m != NULL);
 
-  e = allocate_MapEntry(allocate_string("abc"), allocate_integer(1));
+  e = allocate_MapEntry(allocate_string("abc"), (void *)allocate_integer(1));
   assert(map_put(m, e) == 1);
-  e = allocate_MapEntry(allocate_string("xyz"), allocate_integer(2));
+  e = allocate_MapEntry(allocate_string("xyz"), (void *)allocate_integer(2));
   assert(map_put(m, e) == 1);
-  e = allocate_MapEntry(allocate_string("a"), allocate_integer(3));
+  e = allocate_MapEntry(allocate_string("a"), (void *)allocate_integer(3));
   assert(map_put(m, e) == 1);
-  e = allocate_MapEntry(allocate_string("123"), allocate_integer(4));
+  e = allocate_MapEntry(allocate_string("123"), (void *)allocate_integer(4));
   assert(map_put(m, e) == 1);
 
   assert(*(int *)(map_get(m, "abc")->val) == 1);

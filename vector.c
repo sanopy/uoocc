@@ -33,7 +33,7 @@ int vector_push_back(Vector *v, void *data) {
 }
 
 void *vector_at(Vector *v, int pos) {
-  if (v->size <= pos)
+  if (pos < 0 || v->size <= pos)
     return NULL;
   else
     return v->data[pos];
