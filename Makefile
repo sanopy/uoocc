@@ -1,10 +1,19 @@
-cc.out: main.c
-	gcc -std=c11 -Wall main.c -o cc.out
+CC = gcc
+TARGET = cc.out
+CFLAGS = -std=c11 -Wall
+SRCS = main.c vector.c
+OBJS := $(SRCS:.c=.o)
+
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $(OBJS)
+
+clean:
+	$(RM) $(TARGET) $(OBJS) *.s *.out
+
+utiltest.out: vector.o test/test_utils.c
+	gcc -o utiltest.out $^
 
 .PHONY: test
-test: cc.out
+test: cc.out utiltest.out
+	./utiltest.out
 	./test/test_main.sh
-
-.PHONY: clean
-clean:
-	rm -f cc.out
