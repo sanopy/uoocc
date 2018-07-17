@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include "uoocc.h"
 
-#define MAX_IDENT_LENGTH 256
-
 enum {
   AST_INT,
   AST_OP_ADD,
@@ -23,6 +21,7 @@ typedef struct _Ast {
   struct _Ast *right;
 } Ast;
 
+TokenQueue token_queue;
 Map *symbol_table;
 
 Ast *make_ast_op(int type, Ast *left, Ast *right) {
@@ -49,92 +48,28 @@ Ast *make_ast_ident(char *ident) {
   return p;
 }
 
-void skip(void) {
-  char c;
-  do {
-    c = getc(stdin);
-  } while(isspace(c));
-  ungetc(c, stdin);
-}
-
-void error(char *s) {
-  fprintf(stderr, "Error: %s.", s);
-  exit(1);
-}
-
-// [0-9]+
-Ast *read_number(void) {
-  char c;
-  int num = 0;
-
-  skip();
-
-  c = getc(stdin);
-  if (!isdigit(c))
-    error("number was expected");
-  else
-    ungetc(c, stdin);
-
-  while ((c = getc(stdin)) != EOF) {
-    if (!isdigit(c)) {
-      ungetc(c, stdin);
-      break;
-    }
-    num = num * 10 + c - '0';
-  }
-
-  return make_ast_int(num);
-}
-
-// [a-zA-Z]+
-Ast *read_ident(void) {
-  char ident[MAX_IDENT_LENGTH];
-  int idx = 0;
-
-  skip();
-
-  char c = getc(stdin);
-  while (isalpha(c)) {
-    ident[idx++] = c;
-    c = getc(stdin);
-  }
-
-  if (idx == 0)
-    error("ident was expected");
-
-  ident[idx] = '\0';
-  ungetc(c, stdin);
-
-  if (map_get(symbol_table, ident) == NULL) {
-    MapEntry *e = allocate_MapEntry(allocate_string(ident), allocate_integer(symbol_table->size + 1));
-    map_put(symbol_table, e);
-  }
-
-  return make_ast_ident(allocate_string(ident));
-}
-
 Ast *expr(void);
 
 // <factor> = <variable> | <number> | '(' <expr> ')'
 Ast *factor(void) {
-  skip();
-  char c = getc(stdin);
-
+  int type = current_token()->type;
   Ast *ret;
-  if (c == '(') {
+  if (type == TK_LPAR) {
+    next_token();
     ret = expr();
-    skip();
-    c = getc(stdin);
-    if (c != ')')
-      error("')' was expected");
-  } else if (isdigit(c)) {
-    ungetc(c, stdin);
-    ret = read_number();
+    if (current_token()->type != TK_RPAR)
+      error_with_token(current_token(), "')' was expected");
+  } else if (type == TK_NUM) {
+    ret = make_ast_int(current_token()->number);
   } else {
-    ungetc(c, stdin);
-    ret = read_ident();
+    if (map_get(symbol_table, current_token()->text) == NULL) {
+      MapEntry *e = allocate_MapEntry(current_token()->text, allocate_integer(symbol_table->size + 1));
+      map_put(symbol_table, e);
+    }
+    ret = make_ast_ident(current_token()->text);
   }
 
+  next_token();
   return ret;
 }
 
@@ -143,16 +78,14 @@ Ast *factor(void) {
   <term_tail> = ε | '*' <factor> <term_tail> | '/' <factor> <term_tail>
 */
 Ast *term_tail(Ast *left) {
-  skip();
-  char c = getc(stdin);
-
-  if (c == '*' || c == '/') {
+  int type = current_token()->type;
+  if (type == TK_MUL || type == TK_DIV) {
+    next_token();
     Ast *right = factor();
-    int ast_op = c == '*' ? AST_OP_MUL : AST_OP_DIV;
+    int ast_op = type == TK_MUL ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right);
     return term_tail(p);
   } else {
-    ungetc(c, stdin);
     return left;
   }
 }
@@ -167,27 +100,24 @@ Ast *term(void) {
   <expr_tail> = ε | '+' <term> <expr_tail> | '-' <term> <expr_tail>
 */
 Ast *expr_tail(Ast *left) {
-  skip();
-  char c = getc(stdin);
-
-  if (c == '+' || c == '-') {
+  int type = current_token()->type;
+  if (type == TK_PLUS || type == TK_MINUS) {
+    next_token();
     Ast *right = term();
-    int ast_op = c == '+' ? AST_OP_ADD : AST_OP_SUB;
+    int ast_op = type == TK_PLUS ? AST_OP_ADD : AST_OP_SUB;
     Ast *p = make_ast_op(ast_op, left, right);
     return expr_tail(p);
   } else {
-    ungetc(c, stdin);
     return left;
   }
 }
 
 Ast *expr(void) {
   Ast *p = term();
-  skip(); char c = getc(stdin);
-  if (p->type == AST_IDENT && c == '=')
+  if (p->type == AST_IDENT && current_token()->type == TK_ASSIGN) {
+    next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr());
-  else {
-    ungetc(c, stdin);
+  } else {
     return expr_tail(p);
   }
 }
@@ -195,16 +125,14 @@ Ast *expr(void) {
 // <program> = { <expr> ';' }
 Vector *program(void) {
   Vector *v = vector_new();
-  skip(); char c = getc(stdin);
 
-  while (c != EOF) {
-    ungetc(c, stdin);
+  while (current_token()->type != TK_EOF) {
     Ast *p = expr();
     vector_push_back(v, (void *)p);
-    skip(); c = getc(stdin);
-    if (c != ';')
-      error("';' was wxpected");
-    skip(); c = getc(stdin);
+    if (current_token()->type != TK_SEMI)
+      error_with_token(current_token(), "';' was wxpected");
+    else
+      next_token();
   }
 
   return v;
@@ -281,6 +209,7 @@ void codegen(Ast *p) {
 }
 
 int main(void) {
+  init_token_queue(stdin);\
   symbol_table = map_new();
   Vector *v = program();
 
