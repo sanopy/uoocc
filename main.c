@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "uoocc.h"
+
+#define MAX_IDENT_LENGTH 256
 
 enum {
   AST_INT,
@@ -8,14 +11,19 @@ enum {
   AST_OP_SUB,
   AST_OP_MUL,
   AST_OP_DIV,
+  AST_OP_ASSIGN,
+  AST_IDENT,
 };
 
 typedef struct _Ast {
   int type;
   int ival;
+  char *ident;
   struct _Ast *left;
   struct _Ast *right;
 } Ast;
+
+Map *symbol_table;
 
 Ast *make_ast_op(int type, Ast *left, Ast *right) {
   Ast *p = malloc(sizeof(Ast));
@@ -33,6 +41,14 @@ Ast *make_ast_int(int val) {
   return p;
 }
 
+Ast *make_ast_ident(char *ident) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_IDENT;
+  p->ident = ident;
+  p->left = p->right = NULL;
+  return p;
+}
+
 void skip(void) {
   char c;
   do {
@@ -46,6 +62,7 @@ void error(char *s) {
   exit(1);
 }
 
+// [0-9]+
 Ast *read_number(void) {
   char c;
   int num = 0;
@@ -69,9 +86,36 @@ Ast *read_number(void) {
   return make_ast_int(num);
 }
 
+// [a-zA-Z]+
+Ast *read_ident(void) {
+  char ident[MAX_IDENT_LENGTH];
+  int idx = 0;
+
+  skip();
+
+  char c = getc(stdin);
+  while (isalpha(c)) {
+    ident[idx++] = c;
+    c = getc(stdin);
+  }
+
+  if (idx == 0)
+    error("ident was expected");
+
+  ident[idx] = '\0';
+  ungetc(c, stdin);
+
+  if (map_get(symbol_table, ident) == NULL) {
+    MapEntry *e = allocate_MapEntry(allocate_string(ident), allocate_integer(symbol_table->size + 1));
+    map_put(symbol_table, e);
+  }
+
+  return make_ast_ident(allocate_string(ident));
+}
+
 Ast *expr(void);
 
-// <factor> = <number> | '(' <expr> ')'
+// <factor> = <variable> | <number> | '(' <expr> ')'
 Ast *factor(void) {
   skip();
   char c = getc(stdin);
@@ -83,9 +127,12 @@ Ast *factor(void) {
     c = getc(stdin);
     if (c != ')')
       error("')' was expected");
-  } else {
+  } else if (isdigit(c)) {
     ungetc(c, stdin);
     ret = read_number();
+  } else {
+    ungetc(c, stdin);
+    ret = read_ident();
   }
 
   return ret;
@@ -116,7 +163,7 @@ Ast *term(void) {
 }
 
 /*
-  <expr> = <term> <expr_tail>
+  <expr> = <variable> '=' <expr> | <term> <expr_tail>
   <expr_tail> = ε | '+' <term> <expr_tail> | '-' <term> <expr_tail>
 */
 Ast *expr_tail(Ast *left) {
@@ -135,8 +182,32 @@ Ast *expr_tail(Ast *left) {
 }
 
 Ast *expr(void) {
-  Ast *val = term();
-  return expr_tail(val);
+  Ast *p = term();
+  skip(); char c = getc(stdin);
+  if (p->type == AST_IDENT && c == '=')
+    return make_ast_op(AST_OP_ASSIGN, p, expr());
+  else {
+    ungetc(c, stdin);
+    return expr_tail(p);
+  }
+}
+
+// <program> = { <expr> ';' }
+Vector *program(void) {
+  Vector *v = vector_new();
+  skip(); char c = getc(stdin);
+
+  while (c != EOF) {
+    ungetc(c, stdin);
+    Ast *p = expr();
+    vector_push_back(v, (void *)p);
+    skip(); c = getc(stdin);
+    if (c != ';')
+      error("';' was wxpected");
+    skip(); c = getc(stdin);
+  }
+
+  return v;
 }
 
 void debug_print(Ast *p) {
@@ -156,6 +227,14 @@ void debug_print(Ast *p) {
     printf(" ");
     debug_print(p->right);
     printf(")");
+  } else if (p->type == AST_OP_ASSIGN) {
+    printf("(= ");
+    debug_print(p->left);
+    printf(" ");
+    debug_print(p->right);
+    printf(")");
+  } else if (p->type == AST_IDENT) {
+    printf("%s", p->ident);
   }
 }
 
@@ -171,9 +250,9 @@ void codegen(Ast *p) {
   case AST_OP_SUB:
     codegen(p->left);
     codegen(p->right);
-    printf("\tpopq %%rbx\n");
+    printf("\tpopq %%rdx\n");
     printf("\tpopq %%rax\n");
-    printf("\t%s %%rbx, %%rax\n", p->type == AST_OP_ADD ? "add" : "sub");
+    printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "add" : "sub");
     printf("\tpushq %%rax\n");
     break;
   case AST_OP_MUL:
@@ -190,16 +269,34 @@ void codegen(Ast *p) {
     }
     printf("\tpushq %%rax\n");
     break;
+  case AST_OP_ASSIGN:
+    codegen(p->right);
+    printf("\tpopq %%rax\n");
+    printf("\tmovq %%rax, %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->left->ident)->val) * -8);
+    break;
+  case AST_IDENT:
+    printf("\tpushq %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->ident)->val) * -8);
+    break;
   }
 }
 
 int main(void) {
-  Ast *root = expr();
+  symbol_table = map_new();
+  Vector *v = program();
 
   printf("\t.global main\n");
   printf("main:\n");
-  codegen(root);
+  printf("\tpushq %%rbp\n");
+  printf("\tmovq %%rsp, %%rbp\n");
+  printf("\tsub $%d, %%rsp\n", symbol_table->size * 8);
+
+  for (int i = 0; i < v->size; i++)
+    codegen((Ast *)vector_at(v, i));
+
   printf("\tpopq %%rax\n");
+
+  printf("\tmovq %%rbp, %%rsp\n");
+  printf("\tpopq %%rbp\n");
   printf("\tret\n");
 
   return 0;

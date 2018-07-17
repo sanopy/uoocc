@@ -23,6 +23,8 @@ typedef struct {
   int size;
 } Map;
 
+extern Map *symbol_table;
+
 MapEntry *allocate_MapEntry(char *, void *);
 Map *map_new(void);
 int map_put(Map *, MapEntry *);
