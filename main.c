@@ -209,7 +209,7 @@ void codegen(Ast *p) {
 }
 
 int main(void) {
-  init_token_queue(stdin);\
+  init_token_queue(stdin);
   symbol_table = map_new();
   Vector *v = program();
 
