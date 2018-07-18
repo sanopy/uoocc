@@ -2,11 +2,8 @@
 
 total=0
 
-runtest() {
-  echo "$1" | ./cc.out > test.s
-  gcc test.s -o test.out
-  ./test.out
-  actual=$?
+assertEquals() {
+  actual=$1
   expected=$2
   if [ $actual = $expected ]; then
     echo "Test $total: Passed"
@@ -16,6 +13,20 @@ runtest() {
     exit 1
   fi
   total=`echo "$total+1" | bc`
+}
+
+runtest() {
+  echo "$1" | ./cc.out > test.s
+  gcc test.s -o test.out
+  ./test.out
+  assertEquals $? $2
+  rm -f test.s test.out
+}
+
+printtest() {
+  echo "$1" | ./cc.out > test.s
+  gcc test.s test/func.c -o test.out
+  assertEquals `./test.out` $2
   rm -f test.s test.out
 }
 
@@ -51,3 +62,6 @@ runtest 'a = 1; a;' 1
 runtest 'a = 1; b = 2; a + b;' 3
 runtest 'a = b = c = 1; a + b + c;' 3
 runtest 'a = 5; b = a + 6; c = b * 2; a * 2 + b + c;' 43
+
+echo "=== function ==="
+printtest 'print_hello();' 'hello' 

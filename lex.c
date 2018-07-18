@@ -24,13 +24,13 @@ char *read_number(FILE *fp, char c) {
   return allocate_string(num);
 }
 
-// [a-zA-Z]+
+// [a-zA-Z_]+
 char *read_ident(FILE *fp, char c) {
   char ident[MAX_TOKEN_LENGTH];
   int idx = 0;
 
   while (c != EOF) {
-    if (!isalpha(c)) {
+    if (!(isalpha(c) || c == '_')) {
       ungetc(c, fp);
       break;
     }
@@ -97,7 +97,7 @@ void init_token_queue(FILE *fp) {
       char *s = read_number(fp, c);
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_NUM, s));
       now_col += strlen(s) - 1;
-    } else if (isalpha(c)) {
+    } else if (isalpha(c) || c == '_') {
       char *s = read_ident(fp, c);
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_IDENT, s));
       now_col += strlen(s) - 1;

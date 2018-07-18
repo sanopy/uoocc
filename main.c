@@ -10,7 +10,8 @@ enum {
   AST_OP_MUL,
   AST_OP_DIV,
   AST_OP_ASSIGN,
-  AST_IDENT,
+  AST_VAR,
+  AST_CALL_FUNC,
 };
 
 typedef struct _Ast {
@@ -40,9 +41,17 @@ Ast *make_ast_int(int val) {
   return p;
 }
 
-Ast *make_ast_ident(char *ident) {
+Ast *make_ast_var(char *ident) {
   Ast *p = malloc(sizeof(Ast));
-  p->type = AST_IDENT;
+  p->type = AST_VAR;
+  p->ident = ident;
+  p->left = p->right = NULL;
+  return p;
+}
+
+Ast *make_ast_func(char *ident) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_CALL_FUNC;
   p->ident = ident;
   p->left = p->right = NULL;
   return p;
@@ -66,7 +75,7 @@ Ast *factor(void) {
       MapEntry *e = allocate_MapEntry(current_token()->text, allocate_integer(symbol_table->size + 1));
       map_put(symbol_table, e);
     }
-    ret = make_ast_ident(current_token()->text);
+    ret = make_ast_var(current_token()->text);
   }
 
   next_token();
@@ -114,7 +123,7 @@ Ast *expr_tail(Ast *left) {
 
 Ast *expr(void) {
   Ast *p = term();
-  if (p->type == AST_IDENT && current_token()->type == TK_ASSIGN) {
+  if (p->type == AST_VAR && current_token()->type == TK_ASSIGN) {
     next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr());
   } else {
@@ -122,15 +131,30 @@ Ast *expr(void) {
   }
 }
 
+// <call_statement> = <ident> '(' ')'
+Ast *call_statement(void) {
+  Ast *p = make_ast_func(current_token()->text);
+  if (next_token()->type != TK_LPAR)
+    error_with_token(current_token(), "'(' was expected");
+  if (next_token()->type != TK_RPAR)
+    error_with_token(current_token(), "')' was expected");
+  next_token();
+  return p;
+}
+
 // <program> = { <expr> ';' }
 Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    Ast *p = expr();
+    Ast *p;
+    if (current_token()->type == TK_IDENT && second_token()->type == TK_LPAR)
+      p = call_statement();
+    else
+      p = expr();
     vector_push_back(v, (void *)p);
     if (current_token()->type != TK_SEMI)
-      error_with_token(current_token(), "';' was wxpected");
+      error_with_token(current_token(), "';' was expected");
     else
       next_token();
   }
@@ -161,7 +185,7 @@ void debug_print(Ast *p) {
     printf(" ");
     debug_print(p->right);
     printf(")");
-  } else if (p->type == AST_IDENT) {
+  } else if (p->type == AST_VAR) {
     printf("%s", p->ident);
   }
 }
@@ -202,8 +226,11 @@ void codegen(Ast *p) {
     printf("\tpopq %%rax\n");
     printf("\tmovq %%rax, %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->left->ident)->val) * -8);
     break;
-  case AST_IDENT:
+  case AST_VAR:
     printf("\tpushq %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->ident)->val) * -8);
+    break;
+  case AST_CALL_FUNC:
+    printf("\tcall %s\n", p->ident);
     break;
   }
 }
