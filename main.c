@@ -25,7 +25,7 @@ typedef struct _Ast {
 TokenQueue token_queue;
 Map *symbol_table;
 
-Ast *make_ast_op(int type, Ast *left, Ast *right) {
+static Ast *make_ast_op(int type, Ast *left, Ast *right) {
   Ast *p = malloc(sizeof(Ast));
   p->type = type;
   p->left = left;
@@ -33,7 +33,7 @@ Ast *make_ast_op(int type, Ast *left, Ast *right) {
   return p;
 }
 
-Ast *make_ast_int(int val) {
+static Ast *make_ast_int(int val) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_INT;
   p->ival = val;
@@ -41,7 +41,7 @@ Ast *make_ast_int(int val) {
   return p;
 }
 
-Ast *make_ast_var(char *ident) {
+static Ast *make_ast_var(char *ident) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_VAR;
   p->ident = ident;
@@ -49,7 +49,7 @@ Ast *make_ast_var(char *ident) {
   return p;
 }
 
-Ast *make_ast_func(char *ident) {
+static Ast *make_ast_func(char *ident) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_CALL_FUNC;
   p->ident = ident;
@@ -57,10 +57,21 @@ Ast *make_ast_func(char *ident) {
   return p;
 }
 
-Ast *expr(void);
+// <call_function> = <ident> '(' ')'
+static Ast *call_function(void) {
+  Ast *p = make_ast_func(current_token()->text);
+  if (next_token()->type != TK_LPAR)
+    error_with_token(current_token(), "'(' was expected");
+  if (next_token()->type != TK_RPAR)
+    error_with_token(current_token(), "')' was expected");
+  next_token();
+  return p;
+}
 
-// <factor> = <variable> | <number> | '(' <expr> ')'
-Ast *factor(void) {
+static Ast *expr(void);
+
+// <factor> = <variable> | <number> | '(' <expr> ')' | <call_function>
+static Ast *factor(void) {
   int type = current_token()->type;
   Ast *ret;
   if (type == TK_LPAR) {
@@ -68,17 +79,21 @@ Ast *factor(void) {
     ret = expr();
     if (current_token()->type != TK_RPAR)
       error_with_token(current_token(), "')' was expected");
+    next_token();
   } else if (type == TK_NUM) {
     ret = make_ast_int(current_token()->number);
+    next_token();
+  } else if (current_token()->type == TK_IDENT && second_token()->type == TK_LPAR) {
+    ret = call_function();
   } else {
     if (map_get(symbol_table, current_token()->text) == NULL) {
       MapEntry *e = allocate_MapEntry(current_token()->text, allocate_integer(symbol_table->size + 1));
       map_put(symbol_table, e);
     }
     ret = make_ast_var(current_token()->text);
+    next_token();
   }
 
-  next_token();
   return ret;
 }
 
@@ -86,7 +101,7 @@ Ast *factor(void) {
   <term> = <factor> <term_tail>
   <term_tail> = ε | '*' <factor> <term_tail> | '/' <factor> <term_tail>
 */
-Ast *term_tail(Ast *left) {
+static Ast *term_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_MUL || type == TK_DIV) {
     next_token();
@@ -99,7 +114,7 @@ Ast *term_tail(Ast *left) {
   }
 }
 
-Ast *term(void) {
+static Ast *term(void) {
   Ast *val = factor();
   return term_tail(val);
 }
@@ -108,7 +123,7 @@ Ast *term(void) {
   <expr> = <variable> '=' <expr> | <term> <expr_tail>
   <expr_tail> = ε | '+' <term> <expr_tail> | '-' <term> <expr_tail>
 */
-Ast *expr_tail(Ast *left) {
+static Ast *expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_PLUS || type == TK_MINUS) {
     next_token();
@@ -121,7 +136,7 @@ Ast *expr_tail(Ast *left) {
   }
 }
 
-Ast *expr(void) {
+static Ast *expr(void) {
   Ast *p = term();
   if (p->type == AST_VAR && current_token()->type == TK_ASSIGN) {
     next_token();
@@ -131,27 +146,12 @@ Ast *expr(void) {
   }
 }
 
-// <call_statement> = <ident> '(' ')'
-Ast *call_statement(void) {
-  Ast *p = make_ast_func(current_token()->text);
-  if (next_token()->type != TK_LPAR)
-    error_with_token(current_token(), "'(' was expected");
-  if (next_token()->type != TK_RPAR)
-    error_with_token(current_token(), "')' was expected");
-  next_token();
-  return p;
-}
-
 // <program> = { <expr> ';' }
-Vector *program(void) {
+static Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    Ast *p;
-    if (current_token()->type == TK_IDENT && second_token()->type == TK_LPAR)
-      p = call_statement();
-    else
-      p = expr();
+    Ast *p = expr();
     vector_push_back(v, (void *)p);
     if (current_token()->type != TK_SEMI)
       error_with_token(current_token(), "';' was expected");
@@ -190,7 +190,7 @@ void debug_print(Ast *p) {
   }
 }
 
-void codegen(Ast *p) {
+static void codegen(Ast *p) {
   if (p == NULL)
     return;
 
@@ -204,7 +204,7 @@ void codegen(Ast *p) {
     codegen(p->right);
     printf("\tpopq %%rdx\n");
     printf("\tpopq %%rax\n");
-    printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "add" : "sub");
+    printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "add" : "sub");
     printf("\tpushq %%rax\n");
     break;
   case AST_OP_MUL:
@@ -224,13 +224,15 @@ void codegen(Ast *p) {
   case AST_OP_ASSIGN:
     codegen(p->right);
     printf("\tpopq %%rax\n");
-    printf("\tmovq %%rax, %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->left->ident)->val) * -8);
+    printf("\tmovl %%eax, %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
+    printf("\tpushq %%rax\n");
     break;
   case AST_VAR:
-    printf("\tpushq %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->ident)->val) * -8);
+    printf("\tpushq %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->ident)->val) * -4);
     break;
   case AST_CALL_FUNC:
     printf("\tcall %s\n", p->ident);
+    printf("\tpushq %%rax\n");
     break;
   }
 }
@@ -244,7 +246,7 @@ int main(void) {
   printf("main:\n");
   printf("\tpushq %%rbp\n");
   printf("\tmovq %%rsp, %%rbp\n");
-  printf("\tsub $%d, %%rsp\n", symbol_table->size * 8);
+  printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
 
   for (int i = 0; i < v->size; i++)
     codegen((Ast *)vector_at(v, i));

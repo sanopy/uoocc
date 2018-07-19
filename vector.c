@@ -1,6 +1,15 @@
 #include <stdlib.h>
 #include "uoocc.h"
 
+static int vector_realloc(Vector *v, int new_size) {
+  void **p = realloc(v->data, new_size * sizeof(void *));
+  if (p == NULL)
+    return 0;
+  v->data = p;
+  v->reserved_size = new_size;
+  return 1;
+}
+
 Vector *vector_new(void) {
   Vector *v = (Vector *)malloc(sizeof(Vector));
   if (v == NULL)
@@ -11,15 +20,6 @@ Vector *vector_new(void) {
   if (v->data == NULL)
     return NULL;
   return v;
-}
-
-int vector_realloc(Vector *v, int new_size) {
-  void **p = realloc(v->data, new_size * sizeof(void *));
-  if (p == NULL)
-    return 0;
-  v->data = p;
-  v->reserved_size = new_size;
-  return 1;
 }
 
 int vector_push_back(Vector *v, void *data) {

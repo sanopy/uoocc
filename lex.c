@@ -7,7 +7,7 @@
 TokenQueue token_queue;
 
 // [0-9]+
-char *read_number(FILE *fp, char c) {
+static char *read_number(FILE *fp, char c) {
   char num[MAX_TOKEN_LENGTH];
   int idx = 0;
 
@@ -25,7 +25,7 @@ char *read_number(FILE *fp, char c) {
 }
 
 // [a-zA-Z_]+
-char *read_ident(FILE *fp, char c) {
+static char *read_ident(FILE *fp, char c) {
   char ident[MAX_TOKEN_LENGTH];
   int idx = 0;
 
@@ -42,7 +42,7 @@ char *read_ident(FILE *fp, char c) {
   return allocate_string(ident);
 }
 
-Token *make_token(int row, int col, int type, char *text) {
+static Token *make_token(int row, int col, int type, char *text) {
   Token *t = (Token *)malloc(sizeof(Token));
 
   t->row = row;
