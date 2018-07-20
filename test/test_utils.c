@@ -10,7 +10,7 @@ void test_vector(void) {
   int times = 64;
   for (int i = 0; i < times; i++) {
     assert(vector_push_back(v, (void *)allocate_integer(i)) == 1);
-    assert(v->size == i+1);
+    assert(v->size == i + 1);
   }
 
   for (int i = 0; i < times; i++) {

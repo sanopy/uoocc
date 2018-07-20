@@ -7,6 +7,7 @@ OBJS := $(SRCS:.c=.o)
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
+.PHONY: clean
 clean:
 	$(RM) $(TARGET) $(OBJS) *.s *.out
 
@@ -17,3 +18,7 @@ utiltest.out: vector.o map.o mylib.o test/test_utils.c
 test: cc.out utiltest.out
 	./utiltest.out
 	./test/test_main.sh
+
+.PHONY: format
+format:
+	clang-format -i **/*.c *.h

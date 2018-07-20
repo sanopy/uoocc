@@ -1,7 +1,7 @@
-#include <stdio.h>
 #include <ctype.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "uoocc.h"
 
 TokenQueue token_queue;
@@ -78,21 +78,29 @@ void init_token_queue(FILE *fp) {
     }
 
     if (c == '+')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_PLUS, allocate_string("+")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_PLUS,
+                                             allocate_string("+")));
     else if (c == '-')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MINUS, allocate_string("-")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MINUS,
+                                             allocate_string("-")));
     else if (c == '*')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MUL, allocate_string("*")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MUL,
+                                             allocate_string("*")));
     else if (c == '/')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_DIV, allocate_string("/")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_DIV,
+                                             allocate_string("/")));
     else if (c == '(')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LPAR, allocate_string("(")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LPAR,
+                                             allocate_string("(")));
     else if (c == ')')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RPAR, allocate_string(")")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RPAR,
+                                             allocate_string(")")));
     else if (c == '=')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_ASSIGN, allocate_string("=")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_ASSIGN,
+                                             allocate_string("=")));
     else if (c == ';')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_SEMI, allocate_string(";")));
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_SEMI,
+                                             allocate_string(";")));
     else if (isdigit(c)) {
       char *s = read_number(fp, c);
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_NUM, s));
@@ -106,7 +114,8 @@ void init_token_queue(FILE *fp) {
 
     now_col++;
   }
-  vector_push_back(v, (void *)make_token(now_row, now_col, TK_EOF, allocate_string("EOF")));
+  vector_push_back(
+      v, (void *)make_token(now_row, now_col, TK_EOF, allocate_string("EOF")));
 }
 
 Token *current_token(void) {

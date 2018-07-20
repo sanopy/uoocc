@@ -1,5 +1,5 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include "uoocc.h"
 
 MapEntry *allocate_MapEntry(char *key, void *val) {

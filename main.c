@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include "uoocc.h"
 
@@ -83,11 +83,13 @@ static Ast *factor(void) {
   } else if (type == TK_NUM) {
     ret = make_ast_int(current_token()->number);
     next_token();
-  } else if (current_token()->type == TK_IDENT && second_token()->type == TK_LPAR) {
+  } else if (current_token()->type == TK_IDENT &&
+             second_token()->type == TK_LPAR) {
     ret = call_function();
   } else {
     if (map_get(symbol_table, current_token()->text) == NULL) {
-      MapEntry *e = allocate_MapEntry(current_token()->text, allocate_integer(symbol_table->size + 1));
+      MapEntry *e = allocate_MapEntry(current_token()->text,
+                                      allocate_integer(symbol_table->size + 1));
       map_put(symbol_table, e);
     }
     ret = make_ast_var(current_token()->text);
@@ -195,45 +197,47 @@ static void codegen(Ast *p) {
     return;
 
   switch (p->type) {
-  case AST_INT:
-    printf("\tpushq $%d\n", p->ival);
-    break;
-  case AST_OP_ADD:
-  case AST_OP_SUB:
-    codegen(p->left);
-    codegen(p->right);
-    printf("\tpopq %%rdx\n");
-    printf("\tpopq %%rax\n");
-    printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "add" : "sub");
-    printf("\tpushq %%rax\n");
-    break;
-  case AST_OP_MUL:
-  case AST_OP_DIV:
-    codegen(p->left);
-    codegen(p->right);
-    printf("\tpopq %%rbx\n");
-    printf("\tpopq %%rax\n");
-    if (p->type == AST_OP_MUL)
-      printf("\tmul %%rbx\n");
-    else {
-      printf("\txor %%rdx, %%rdx\n");
-      printf("\tdiv %%rbx\n");
-    }
-    printf("\tpushq %%rax\n");
-    break;
-  case AST_OP_ASSIGN:
-    codegen(p->right);
-    printf("\tpopq %%rax\n");
-    printf("\tmovl %%eax, %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
-    printf("\tpushq %%rax\n");
-    break;
-  case AST_VAR:
-    printf("\tpushq %d(%%rbp)\n", *(int *)(map_get(symbol_table, p->ident)->val) * -4);
-    break;
-  case AST_CALL_FUNC:
-    printf("\tcall %s\n", p->ident);
-    printf("\tpushq %%rax\n");
-    break;
+    case AST_INT:
+      printf("\tpushq $%d\n", p->ival);
+      break;
+    case AST_OP_ADD:
+    case AST_OP_SUB:
+      codegen(p->left);
+      codegen(p->right);
+      printf("\tpopq %%rdx\n");
+      printf("\tpopq %%rax\n");
+      printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "add" : "sub");
+      printf("\tpushq %%rax\n");
+      break;
+    case AST_OP_MUL:
+    case AST_OP_DIV:
+      codegen(p->left);
+      codegen(p->right);
+      printf("\tpopq %%rbx\n");
+      printf("\tpopq %%rax\n");
+      if (p->type == AST_OP_MUL)
+        printf("\tmul %%rbx\n");
+      else {
+        printf("\txor %%rdx, %%rdx\n");
+        printf("\tdiv %%rbx\n");
+      }
+      printf("\tpushq %%rax\n");
+      break;
+    case AST_OP_ASSIGN:
+      codegen(p->right);
+      printf("\tpopq %%rax\n");
+      printf("\tmovl %%eax, %d(%%rbp)\n",
+             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
+      printf("\tpushq %%rax\n");
+      break;
+    case AST_VAR:
+      printf("\tpushq %d(%%rbp)\n",
+             *(int *)(map_get(symbol_table, p->ident)->val) * -4);
+      break;
+    case AST_CALL_FUNC:
+      printf("\tcall %s\n", p->ident);
+      printf("\tpushq %%rax\n");
+      break;
   }
 }
 
