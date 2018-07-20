@@ -18,6 +18,7 @@ typedef struct _Ast {
   int type;
   int ival;
   char *ident;
+  Vector *args;
   struct _Ast *left;
   struct _Ast *right;
 } Ast;
@@ -54,21 +55,35 @@ static Ast *make_ast_func(char *ident) {
   p->type = AST_CALL_FUNC;
   p->ident = ident;
   p->left = p->right = NULL;
-  return p;
-}
-
-// <call_function> = <ident> '(' ')'
-static Ast *call_function(void) {
-  Ast *p = make_ast_func(current_token()->text);
-  if (next_token()->type != TK_LPAR)
-    error_with_token(current_token(), "'(' was expected");
-  if (next_token()->type != TK_RPAR)
-    error_with_token(current_token(), "')' was expected");
-  next_token();
+  p->args = vector_new();
   return p;
 }
 
 static Ast *expr(void);
+
+// <call_function> = <ident> '(' [ <expr> { ',' <expr> } ] ')'
+static Ast *call_function(void) {
+  Ast *p = make_ast_func(current_token()->text);
+  if (next_token()->type != TK_LPAR)
+    error_with_token(current_token(), "'(' was expected");
+
+  if (second_token()->type == TK_RPAR) {
+    next_token(); next_token();
+    return p;
+  }
+
+  do {
+    next_token();
+    vector_push_back(p->args, (void *)expr());
+  } while (current_token()->type == TK_COMMA);
+
+
+  if (current_token()->type != TK_RPAR)
+    error_with_token(current_token(), "')' was expected");
+
+  next_token();
+  return p;
+}
 
 // <factor> = <variable> | <number> | '(' <expr> ')' | <call_function>
 static Ast *factor(void) {
@@ -235,6 +250,31 @@ static void codegen(Ast *p) {
              *(int *)(map_get(symbol_table, p->ident)->val) * -4);
       break;
     case AST_CALL_FUNC:
+      for (int i = p->args->size - 1; i >= 0; i--)
+        codegen((Ast *)vector_at(p->args, i));
+
+      for (int i = 1; i <= (p->args->size > 6 ? 6 : p->args->size); i++) {
+        switch (i) {
+        case 1:
+          printf("\tpopq %%rdi\n");
+          break;
+        case 2:
+          printf("\tpopq %%rsi\n");
+          break;
+        case 3:
+          printf("\tpopq %%rdx\n");
+          break;
+        case 4:
+          printf("\tpopq %%rcx\n");
+          break;
+        case 5:
+          printf("\tpopq %%r8\n");
+          break;
+        case 6:
+          printf("\tpopq %%r9\n");
+          break;
+        }
+      }
       printf("\tcall %s\n", p->ident);
       printf("\tpushq %%rax\n");
       break;
@@ -250,7 +290,7 @@ int main(void) {
   printf("main:\n");
   printf("\tpushq %%rbp\n");
   printf("\tmovq %%rsp, %%rbp\n");
-  printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
+  printf("\tsub $%d, %%rsp\n", (symbol_table->size * 4) + (symbol_table->size * 4) % 8);
 
   for (int i = 0; i < v->size; i++)
     codegen((Ast *)vector_at(v, i));

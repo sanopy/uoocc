@@ -67,3 +67,8 @@ echo "=== function ==="
 printtest 'print_hello();' 'hello'
 runtest 'return_seven();' 7
 runtest '2 * return_seven() + 5;' 19
+printtest 'print_n(15);' '15'
+printtest 'print_args(21,22,23,24,25,26,27,28);' '21,22,23,24,25,26,27,28'
+runtest '3 * add_three_args(1, 2, 3) / 2;' 9
+runtest 'x = 7; add_eight_args(1, 2 * 2, 3, 4 + 4, 5 / 5 + 5, 6, x, 8 * 8 + 8);' 107
+# runtest 'x = 7; 1 + 2 * 2 + 3 + 4 + 4 + 5 / 5 + 5 + 6 + x + 8 * 8 + 8;' 107

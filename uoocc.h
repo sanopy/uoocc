@@ -46,6 +46,7 @@ enum {
   TK_RPAR,
   TK_ASSIGN,
   TK_SEMI,
+  TK_COMMA,
 };
 
 typedef struct {
