@@ -290,7 +290,10 @@ int main(void) {
   printf("main:\n");
   printf("\tpushq %%rbp\n");
   printf("\tmovq %%rsp, %%rbp\n");
-  printf("\tsub $%d, %%rsp\n", (symbol_table->size * 4) + (symbol_table->size * 4) % 8);
+  if (symbol_table->size > 0 && (symbol_table->size * 4) % 16 == 0)
+    printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
+  else if (symbol_table->size > 0)
+    printf("\tsub $%d, %%rsp\n", (symbol_table->size * 4) + (16 - (symbol_table->size * 4) % 16));
 
   for (int i = 0; i < v->size; i++)
     codegen((Ast *)vector_at(v, i));
