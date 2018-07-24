@@ -191,6 +191,9 @@ static Ast *decl_function(void) {
     do {
       if (next_token()->type != TK_IDENT)
         error_with_token(current_token(), "ident was expected");
+      MapEntry *e = allocate_MapEntry(current_token()->text,
+                                      allocate_integer(symbol_table->size + 1));
+      map_put(symbol_table, e);
       vector_push_back(p->args, (void *)make_ast_var(current_token()->text));
     } while (next_token()->type == TK_COMMA);
     if (current_token()->type != TK_RPAR)
