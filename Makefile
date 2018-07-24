@@ -21,4 +21,4 @@ test: cc.out utiltest.out
 
 .PHONY: format
 format:
-	clang-format -i **/*.c *.h
+	clang-format -i *.c **/*.c *.h

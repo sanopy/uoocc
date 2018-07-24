@@ -12,6 +12,7 @@ enum {
   AST_OP_ASSIGN,
   AST_VAR,
   AST_CALL_FUNC,
+  AST_DECL_FUNC,
 };
 
 typedef struct _Ast {
@@ -19,6 +20,8 @@ typedef struct _Ast {
   int ival;
   char *ident;
   Vector *args;
+  Vector *expr;
+  Map *symbol_table;
   struct _Ast *left;
   struct _Ast *right;
 } Ast;
@@ -50,7 +53,7 @@ static Ast *make_ast_var(char *ident) {
   return p;
 }
 
-static Ast *make_ast_func(char *ident) {
+static Ast *make_ast_call_func(char *ident) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_CALL_FUNC;
   p->ident = ident;
@@ -59,16 +62,28 @@ static Ast *make_ast_func(char *ident) {
   return p;
 }
 
+static Ast *make_ast_decl_func(char *ident) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_DECL_FUNC;
+  p->ident = ident;
+  p->left = p->right = NULL;
+  p->args = vector_new();
+  p->expr = vector_new();
+  symbol_table = p->symbol_table = map_new();
+  return p;
+}
+
 static Ast *expr(void);
 
 // <call_function> = <ident> '(' [ <expr> { ',' <expr> } ] ')'
 static Ast *call_function(void) {
-  Ast *p = make_ast_func(current_token()->text);
+  Ast *p = make_ast_call_func(current_token()->text);
   if (next_token()->type != TK_LPAR)
     error_with_token(current_token(), "'(' was expected");
 
   if (second_token()->type == TK_RPAR) {
-    next_token(); next_token();
+    next_token();
+    next_token();
     return p;
   }
 
@@ -76,7 +91,6 @@ static Ast *call_function(void) {
     next_token();
     vector_push_back(p->args, (void *)expr());
   } while (current_token()->type == TK_COMMA);
-
 
   if (current_token()->type != TK_RPAR)
     error_with_token(current_token(), "')' was expected");
@@ -163,17 +177,49 @@ static Ast *expr(void) {
   }
 }
 
-// <program> = { <expr> ';' }
+// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{' { <expr>
+// ';' } '}'
+static Ast *decl_function(void) {
+  if (current_token()->type != TK_IDENT)
+    error_with_token(current_token(), "ident was expected");
+
+  Ast *p = make_ast_decl_func(current_token()->text);
+  if (next_token()->type != TK_LPAR)
+    error_with_token(current_token(), "'(' was expected");
+
+  if (second_token()->type != TK_RPAR) {
+    do {
+      if (next_token()->type != TK_IDENT)
+        error_with_token(current_token(), "ident was expected");
+      vector_push_back(p->args, (void *)make_ast_var(current_token()->text));
+    } while (next_token()->type == TK_COMMA);
+    if (current_token()->type != TK_RPAR)
+      error_with_token(current_token(), "')' was expected");
+  } else
+    next_token();
+
+  if (p->args->size > 6)
+    error("too many arguments");
+
+  if (next_token()->type != TK_LCUR)
+    error_with_token(current_token(), "'{' was expected");
+  while (next_token()->type != TK_RCUR) {
+    vector_push_back(p->expr, (void *)expr());
+    if (current_token()->type != TK_SEMI)
+      error_with_token(current_token(), "';' was expected");
+  }
+
+  next_token();
+  return p;
+}
+
+// <program> = { <decl_function> }
 static Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    Ast *p = expr();
+    Ast *p = decl_function();
     vector_push_back(v, (void *)p);
-    if (current_token()->type != TK_SEMI)
-      error_with_token(current_token(), "';' was expected");
-    else
-      next_token();
   }
 
   return v;
@@ -254,55 +300,47 @@ static void codegen(Ast *p) {
         codegen((Ast *)vector_at(p->args, i));
 
       for (int i = 1; i <= (p->args->size > 6 ? 6 : p->args->size); i++) {
-        switch (i) {
-        case 1:
-          printf("\tpopq %%rdi\n");
-          break;
-        case 2:
-          printf("\tpopq %%rsi\n");
-          break;
-        case 3:
-          printf("\tpopq %%rdx\n");
-          break;
-        case 4:
-          printf("\tpopq %%rcx\n");
-          break;
-        case 5:
-          printf("\tpopq %%r8\n");
-          break;
-        case 6:
-          printf("\tpopq %%r9\n");
-          break;
-        }
+        char *reg[] = {"", "rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+        printf("\tpopq %%%s\n", reg[i]);
       }
       printf("\tcall %s\n", p->ident);
       printf("\tpushq %%rax\n");
+      break;
+    case AST_DECL_FUNC:
+      symbol_table = p->symbol_table;
+      printf("%s:\n", p->ident);
+      printf("\tpushq %%rbp\n");
+      printf("\tmovq %%rsp, %%rbp\n");
+      if (symbol_table->size > 0 && (symbol_table->size * 4) % 16 == 0)
+        printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
+      else if (p->symbol_table->size > 0)
+        printf("\tsub $%d, %%rsp\n",
+               (symbol_table->size * 4) + (16 - (symbol_table->size * 4) % 16));
+
+      for (int i = 0; i < (p->args->size > 6 ? 6 : p->args->size); i++) {
+        char *s = ((Ast *)vector_at(p->args, i))->ident;
+        char *reg[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+        printf("\tmovl %%%s, %d(%%rbp)\n", reg[i],
+               *(int *)(map_get(symbol_table, s)->val) * -4);
+      }
+
+      for (int i = 0; i < p->expr->size; i++)
+        codegen((Ast *)vector_at(p->expr, i));
+      printf("\tpopq %%rax\n");
+      printf("\tmovq %%rbp, %%rsp\n");
+      printf("\tpopq %%rbp\n");
+      printf("\tret\n");
       break;
   }
 }
 
 int main(void) {
   init_token_queue(stdin);
-  symbol_table = map_new();
   Vector *v = program();
 
   printf("\t.global main\n");
-  printf("main:\n");
-  printf("\tpushq %%rbp\n");
-  printf("\tmovq %%rsp, %%rbp\n");
-  if (symbol_table->size > 0 && (symbol_table->size * 4) % 16 == 0)
-    printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
-  else if (symbol_table->size > 0)
-    printf("\tsub $%d, %%rsp\n", (symbol_table->size * 4) + (16 - (symbol_table->size * 4) % 16));
-
   for (int i = 0; i < v->size; i++)
     codegen((Ast *)vector_at(v, i));
-
-  printf("\tpopq %%rax\n");
-
-  printf("\tmovq %%rbp, %%rsp\n");
-  printf("\tpopq %%rbp\n");
-  printf("\tret\n");
 
   return 0;
 }

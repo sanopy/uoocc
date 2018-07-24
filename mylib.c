@@ -16,11 +16,11 @@ int *allocate_integer(int n) {
 }
 
 void error(char *s) {
-  fprintf(stderr, "Error: %s.", s);
+  fprintf(stderr, "Error: %s.\n", s);
   exit(1);
 }
 
 void error_with_token(Token *tk, char *s) {
-  fprintf(stderr, "%d:%d:<%s> Error: %s.", tk->row, tk->col, tk->text, s);
+  fprintf(stderr, "%d:%d:<%s> Error: %s.\n", tk->row, tk->col, tk->text, s);
   exit(1);
 }

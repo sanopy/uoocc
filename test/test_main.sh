@@ -31,44 +31,47 @@ printtest() {
 }
 
 echo '=== number ==='
-runtest '0;' 0
-runtest '2;' 2
-runtest '9;' 9
+runtest 'main() { 0; }' 0
+runtest 'main() { 2; }' 2
+runtest 'main() { 9; }' 9
 
 echo '=== expression (+, - only) ==='
-runtest '1 + 2;' 3
-runtest '2 - 1;' 1
-runtest '1 + 2 + 3;' 6
-runtest '3 - 2 - 1;' 0
-runtest '5 + 6 - 3;' 8
-runtest '3 + 5 - 3 + 6;' 11
+runtest 'main() { 1 + 2; }' 3
+runtest 'main() { 2 - 1; }' 1
+runtest 'main() { 1 + 2 + 3; }' 6
+runtest 'main() { 3 - 2 - 1; }' 0
+runtest 'main() { 5 + 6 - 3; }' 8
+runtest 'main() { 3 + 5 - 3 + 6; }' 11
 
 echo '=== expression (include *, /) ==='
-runtest '2 * 3;' 6
-runtest '4 / 2;' 2
-runtest '1 * 2 + 3;' 5
-runtest '1 + 2 * 3;' 7
-runtest '1 / 2 + 3;' 3
-runtest '1 + 2 / 3;' 1
-runtest '1 * 2 + 3 + 4 * 5 * 6 / 7;' 22
+runtest 'main() { 2 * 3; }' 6
+runtest 'main() { 4 / 2; }' 2
+runtest 'main() { 1 * 2 + 3; }' 5
+runtest 'main() { 1 + 2 * 3; }' 7
+runtest 'main() { 1 / 2 + 3; }' 3
+runtest 'main() { 1 + 2 / 3; }' 1
+runtest 'main() { 1 * 2 + 3 + 4 * 5 * 6 / 7; }' 22
 
 echo "=== expression (include '(', ')') ==="
-runtest '6 - (5 - 4);' 5
-runtest '(1 + 2) * 3;' 9
-runtest '(1 + 2) * 3 + (4 + 5 + 6) * 2;' 39
+runtest 'main() { 6 - (5 - 4); }' 5
+runtest 'main() { (1 + 2) * 3; }' 9
+runtest 'main() { (1 + 2) * 3 + (4 + 5 + 6) * 2; }' 39
 
 echo "=== variable ==="
-runtest 'a = 1; a;' 1
-runtest 'a = 1; b = 2; a + b;' 3
-runtest 'a = b = c = 1; a + b + c;' 3
-runtest 'a = 5; b = a + 6; c = b * 2; a * 2 + b + c;' 43
+runtest 'main() {a = 1; a; }' 1
+runtest 'main() {a = 1; b = 2; a + b; }' 3
+runtest 'main() {a = b = c = 1; a + b + c; }' 3
+runtest 'main() {a = 5; b = a + 6; c = b * 2; a * 2 + b + c; }' 43
 
 echo "=== function ==="
-printtest 'print_hello();' 'hello'
-runtest 'return_seven();' 7
-runtest '2 * return_seven() + 5;' 19
-printtest 'print_n(15);' '15'
-printtest 'print_args(21,22,23,24,25,26,27,28);' '21,22,23,24,25,26,27,28'
-runtest '3 * add_three_args(1, 2, 3) / 2;' 9
-runtest 'x = 7; add_eight_args(1, 2 * 2, 3, 4 + 4, 5 / 5 + 5, 6, x, 8 * 8 + 8);' 107
-# runtest 'x = 7; 1 + 2 * 2 + 3 + 4 + 4 + 5 / 5 + 5 + 6 + x + 8 * 8 + 8;' 107
+printtest 'main() { print_hello(); }' 'hello'
+runtest 'main() { return_seven(); }' 7
+runtest 'main() { 2 * return_seven() + 5; }' 19
+printtest 'main() { print_n(15); }' '15'
+printtest 'main() { print_args(21,22,23,24,25,26,27,28); }' '21,22,23,24,25,26,27,28'
+runtest 'main() { 3 * add_three_args(1, 2, 3) / 2; }' 9
+runtest 'main() { x = 7; add_eight_args(1, 2 * 2, 3, 4 + 4, 5 / 5 + 5, 6, x, 8 * 8 + 8); }' 107
+
+echo "=== declare function ==="
+runtest 'add(a, b) { a + b; } main() { add(3, 9); }' 12
+runtest 'test(a, b, c, d, e, f) { a + b * b + c + d + d + e / e + e + f; } main() { a = test(1, 2, 3, 4, 5, 6); a * 2 + 3; }' 59
