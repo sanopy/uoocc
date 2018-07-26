@@ -75,7 +75,7 @@ static Ast *make_ast_decl_func(char *ident) {
 
 static Ast *expr(void);
 
-// <call_function> = <ident> '(' [ <expr> { ',' <expr> } ] ')'
+// <call_function> = <ident> '(' [ <additive_expr> { ',' <expr> } ] ')'
 static Ast *call_function(void) {
   Ast *p = make_ast_call_func(current_token()->text);
   expect_token(next_token(), TK_LPAR);
@@ -97,8 +97,8 @@ static Ast *call_function(void) {
   return p;
 }
 
-// <factor> = <variable> | <number> | '(' <expr> ')' | <call_function>
-static Ast *factor(void) {
+// <primary_expr> = <ident> | <number> | '(' <expr> ')' | <call_function>
+static Ast *primary_expr(void) {
   int type = current_token()->type;
   Ast *ret;
   if (type == TK_LPAR) {
@@ -126,56 +126,66 @@ static Ast *factor(void) {
 }
 
 /*
-  <term> = <factor> <term_tail>
-  <term_tail> = ε | '*' <factor> <term_tail> | '/' <factor> <term_tail>
+  <multiplicative_expr> = <primary_expr> <multiplicative_expr_tail>
+  <multiplicative_expr_tail> = ε | '*' <primary_expr> <multiplicative_expr_tail>
+    | '/' <primary_expr> <multiplicative_expr_tail>
 */
-static Ast *term_tail(Ast *left) {
+static Ast *multiplicative_expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_MUL || type == TK_DIV) {
     next_token();
-    Ast *right = factor();
+    Ast *right = primary_expr();
     int ast_op = type == TK_MUL ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right);
-    return term_tail(p);
+    return multiplicative_expr_tail(p);
   } else {
     return left;
   }
 }
 
-static Ast *term(void) {
-  Ast *val = factor();
-  return term_tail(val);
+static Ast *multiplicative_expr(Ast *prim) {
+  Ast *p = prim == NULL ? primary_expr() : prim;
+  return multiplicative_expr_tail(p);
 }
 
 /*
-  <expr> = <variable> '=' <expr> | <term> <expr_tail>
-  <expr_tail> = ε | '+' <term> <expr_tail> | '-' <term> <expr_tail>
+  <additive_expr> = <multiplicative_expr> <additive_expr_tail>
+  <additive_expr_tail> = ε | '+' <multiplicative_expr> <additive_expr_tail> |
+    '-' <multiplicative_expr> <additive_expr_tail>
 */
-static Ast *expr_tail(Ast *left) {
+static Ast *additive_expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_PLUS || type == TK_MINUS) {
     next_token();
-    Ast *right = term();
+    Ast *right = multiplicative_expr(NULL);
     int ast_op = type == TK_PLUS ? AST_OP_ADD : AST_OP_SUB;
     Ast *p = make_ast_op(ast_op, left, right);
-    return expr_tail(p);
+    return additive_expr_tail(p);
   } else {
     return left;
   }
 }
 
+static Ast *additive_expr(Ast *prim) {
+  Ast *p = multiplicative_expr(prim);
+  return additive_expr_tail(p);
+}
+
+// <expr> = <primary_expr> '=' <expr> | <additive_expr>
 static Ast *expr(void) {
-  Ast *p = term();
-  if (p->type == AST_VAR && current_token()->type == TK_ASSIGN) {
+  Ast *p = primary_expr();
+  if (current_token()->type == TK_ASSIGN) {
+    if (p->type != AST_VAR)
+      error_with_token(current_token(), "cannot assign rvalue to lvalue");
     next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr());
   } else {
-    return expr_tail(p);
+    return additive_expr(p);
   }
 }
 
-// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{' { <expr>
-// ';' } '}'
+// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{' {
+//   <expr> ';' } '}'
 static Ast *decl_function(void) {
   expect_token(current_token(), TK_IDENT);
 
