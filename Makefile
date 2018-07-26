@@ -15,7 +15,7 @@ utiltest.out: vector.o map.o mylib.o test/test_utils.c
 	gcc -o $@ $^
 
 .PHONY: test
-test: cc.out utiltest.out
+test: cc.out utiltest.out format
 	./utiltest.out
 	./test/test_main.sh
 

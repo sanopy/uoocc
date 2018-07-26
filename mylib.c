@@ -33,7 +33,9 @@ void error_with_token(Token *tk, char *s) {
 }
 
 void expect_token(Token *tk, int expect) {
-  char *token[] = {"EOF", "number", "ident", "'+'", "'-'", "'*'", "'/'", "'('", "')'", "'='", "';'", "','", "'{'", "'}'"};
+  char *token[] = {"EOF", "number", "ident", "'+'", "'-'", "'*'", "'/'",
+                   "'('", "')'",    "'='",   "';'", "','", "'{'", "'}'"};
   if (tk->type != expect)
-    error_with_token(tk, allocate_concat_string(token[expect], " was expected"));
+    error_with_token(tk,
+                     allocate_concat_string(token[expect], " was expected"));
 }
