@@ -78,8 +78,7 @@ static Ast *expr(void);
 // <call_function> = <ident> '(' [ <expr> { ',' <expr> } ] ')'
 static Ast *call_function(void) {
   Ast *p = make_ast_call_func(current_token()->text);
-  if (next_token()->type != TK_LPAR)
-    error_with_token(current_token(), "'(' was expected");
+  expect_token(next_token(), TK_LPAR);
 
   if (second_token()->type == TK_RPAR) {
     next_token();
@@ -92,8 +91,7 @@ static Ast *call_function(void) {
     vector_push_back(p->args, (void *)expr());
   } while (current_token()->type == TK_COMMA);
 
-  if (current_token()->type != TK_RPAR)
-    error_with_token(current_token(), "')' was expected");
+  expect_token(current_token(), TK_RPAR);
 
   next_token();
   return p;
@@ -106,8 +104,7 @@ static Ast *factor(void) {
   if (type == TK_LPAR) {
     next_token();
     ret = expr();
-    if (current_token()->type != TK_RPAR)
-      error_with_token(current_token(), "')' was expected");
+    expect_token(current_token(), TK_RPAR);
     next_token();
   } else if (type == TK_NUM) {
     ret = make_ast_int(current_token()->number);
@@ -180,36 +177,30 @@ static Ast *expr(void) {
 // <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{' { <expr>
 // ';' } '}'
 static Ast *decl_function(void) {
-  if (current_token()->type != TK_IDENT)
-    error_with_token(current_token(), "ident was expected");
+  expect_token(current_token(), TK_IDENT);
 
   Ast *p = make_ast_decl_func(current_token()->text);
-  if (next_token()->type != TK_LPAR)
-    error_with_token(current_token(), "'(' was expected");
+  expect_token(next_token(), TK_LPAR);
 
   if (second_token()->type != TK_RPAR) {
     do {
-      if (next_token()->type != TK_IDENT)
-        error_with_token(current_token(), "ident was expected");
+      expect_token(next_token(), TK_IDENT);
       MapEntry *e = allocate_MapEntry(current_token()->text,
                                       allocate_integer(symbol_table->size + 1));
       map_put(symbol_table, e);
       vector_push_back(p->args, (void *)make_ast_var(current_token()->text));
     } while (next_token()->type == TK_COMMA);
-    if (current_token()->type != TK_RPAR)
-      error_with_token(current_token(), "')' was expected");
+    expect_token(current_token(), TK_RPAR);
   } else
     next_token();
 
   if (p->args->size > 6)
     error("too many arguments");
 
-  if (next_token()->type != TK_LCUR)
-    error_with_token(current_token(), "'{' was expected");
+  expect_token(next_token(), TK_LCUR);
   while (next_token()->type != TK_RCUR) {
     vector_push_back(p->expr, (void *)expr());
-    if (current_token()->type != TK_SEMI)
-      error_with_token(current_token(), "';' was expected");
+    expect_token(current_token(), TK_SEMI);
   }
 
   next_token();

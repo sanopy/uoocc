@@ -76,3 +76,4 @@ char *allocate_string(char *);
 int *allocate_integer(int);
 void error(char *);
 void error_with_token(Token *, char *);
+void expect_token(Token *, int);
