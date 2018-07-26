@@ -35,7 +35,7 @@ runtest 'main() { 0; }' 0
 runtest 'main() { 2; }' 2
 runtest 'main() { 9; }' 9
 
-echo '=== expression (+, - only) ==='
+echo '=== additive expression ==='
 runtest 'main() { 1 + 2; }' 3
 runtest 'main() { 2 - 1; }' 1
 runtest 'main() { 1 + 2 + 3; }' 6
@@ -43,7 +43,7 @@ runtest 'main() { 3 - 2 - 1; }' 0
 runtest 'main() { 5 + 6 - 3; }' 8
 runtest 'main() { 3 + 5 - 3 + 6; }' 11
 
-echo '=== expression (include *, /) ==='
+echo '=== multiplicative expression ==='
 runtest 'main() { 2 * 3; }' 6
 runtest 'main() { 4 / 2; }' 2
 runtest 'main() { 1 * 2 + 3; }' 5
@@ -52,10 +52,15 @@ runtest 'main() { 1 / 2 + 3; }' 3
 runtest 'main() { 1 + 2 / 3; }' 1
 runtest 'main() { 1 * 2 + 3 + 4 * 5 * 6 / 7; }' 22
 
-echo "=== expression (include '(', ')') ==="
+echo "=== primary expression ==="
 runtest 'main() { 6 - (5 - 4); }' 5
 runtest 'main() { (1 + 2) * 3; }' 9
 runtest 'main() { (1 + 2) * 3 + (4 + 5 + 6) * 2; }' 39
+
+echo "=== equality expression ==="
+runtest 'main() { 25 == 25; }' 1
+runtest 'main() { 10 + 5 == 3 * 5; }' 1
+runtest 'main() { 23 == 39; }' 0
 
 echo "=== variable ==="
 runtest 'main() {a = 1; a; }' 1

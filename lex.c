@@ -95,10 +95,17 @@ void init_token_queue(FILE *fp) {
     else if (c == ')')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_RPAR,
                                              allocate_string(")")));
-    else if (c == '=')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_ASSIGN,
-                                             allocate_string("=")));
-    else if (c == ';')
+    else if (c == '=') {
+      if ((c = getc(fp)) == '=') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_EQUAL,
+                                               allocate_string("==")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_ASSIGN,
+                                               allocate_string("=")));
+      }
+    } else if (c == ';')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_SEMI,
                                              allocate_string(";")));
     else if (c == ',')
@@ -110,7 +117,15 @@ void init_token_queue(FILE *fp) {
     else if (c == '}')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_RCUR,
                                              allocate_string("}")));
-    else if (isdigit(c)) {
+    else if (c == '!') {
+      if ((c = getc(fp)) == '=') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_NEQUAL,
+                                               allocate_string("!=")));
+      } else {
+        ungetc(c, fp);
+      }
+    } else if (isdigit(c)) {
       char *s = read_number(fp, c);
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_NUM, s));
       now_col += strlen(s) - 1;

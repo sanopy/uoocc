@@ -9,6 +9,8 @@ enum {
   AST_OP_SUB,
   AST_OP_MUL,
   AST_OP_DIV,
+  AST_OP_EQUAL,
+  AST_OP_NEQUAL,
   AST_OP_ASSIGN,
   AST_VAR,
   AST_CALL_FUNC,
@@ -75,7 +77,7 @@ static Ast *make_ast_decl_func(char *ident) {
 
 static Ast *expr(void);
 
-// <call_function> = <ident> '(' [ <additive_expr> { ',' <expr> } ] ')'
+// <call_function> = <ident> '(' [ <expr> { ',' <expr> } ] ')'
 static Ast *call_function(void) {
   Ast *p = make_ast_call_func(current_token()->text);
   expect_token(next_token(), TK_LPAR);
@@ -171,7 +173,30 @@ static Ast *additive_expr(Ast *prim) {
   return additive_expr_tail(p);
 }
 
-// <expr> = <primary_expr> '=' <expr> | <additive_expr>
+/*
+  <equality_expr> = <additive_expr> <equality_expr_tail>
+  <equality_expr_tail> = ε | '==' <additive_expr> <equality_expr_tail> |
+    '!=' <additive_expr> <equality_expr_tail>
+*/
+static Ast *equality_expr_tail(Ast *left) {
+  int type = current_token()->type;
+  if (type == TK_EQUAL || type == TK_NEQUAL) {
+    next_token();
+    Ast *right = additive_expr(NULL);
+    int ast_op = type == TK_EQUAL ? AST_OP_EQUAL : AST_OP_NEQUAL;
+    Ast *p = make_ast_op(ast_op, left, right);
+    return equality_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *equality_expr(Ast *prim) {
+  Ast *p = additive_expr(prim);
+  return equality_expr_tail(p);
+}
+
+// <expr> = <primary_expr> '=' <expr> | <equality_expr>
 static Ast *expr(void) {
   Ast *p = primary_expr();
   if (current_token()->type == TK_ASSIGN) {
@@ -180,12 +205,12 @@ static Ast *expr(void) {
     next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr());
   } else {
-    return additive_expr(p);
+    return equality_expr(p);
   }
 }
 
-// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{' {
-//   <expr> ';' } '}'
+// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{'
+//   { <expr> ';' } '}'
 static Ast *decl_function(void) {
   expect_token(current_token(), TK_IDENT);
 
@@ -286,6 +311,16 @@ static void codegen(Ast *p) {
         printf("\txor %%rdx, %%rdx\n");
         printf("\tdiv %%rbx\n");
       }
+      printf("\tpushq %%rax\n");
+      break;
+    case AST_OP_EQUAL:
+    case AST_OP_NEQUAL:
+      codegen(p->left);
+      codegen(p->right);
+      printf("\tpopq %%rdx\n");
+      printf("\tpopq %%rax\n");
+      printf("\tcmpl %%edx, %%eax\n");
+      printf("\t%s %%al\n", p->type == AST_OP_EQUAL ? "sete" : "setne");
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_ASSIGN:

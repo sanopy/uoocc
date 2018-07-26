@@ -49,6 +49,8 @@ enum {
   TK_COMMA,
   TK_LCUR,
   TK_RCUR,
+  TK_EQUAL,
+  TK_NEQUAL,
 };
 
 typedef struct {
