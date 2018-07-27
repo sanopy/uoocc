@@ -15,6 +15,7 @@ enum {
   AST_VAR,
   AST_CALL_FUNC,
   AST_DECL_FUNC,
+  AST_COMPOUND_STATEMENT,
 };
 
 typedef struct _Ast {
@@ -22,7 +23,7 @@ typedef struct _Ast {
   int ival;
   char *ident;
   Vector *args;
-  Vector *expr;
+  Vector *statement;
   Map *symbol_table;
   struct _Ast *left;
   struct _Ast *right;
@@ -70,8 +71,15 @@ static Ast *make_ast_decl_func(char *ident) {
   p->ident = ident;
   p->left = p->right = NULL;
   p->args = vector_new();
-  p->expr = vector_new();
   symbol_table = p->symbol_table = map_new();
+  return p;
+}
+
+static Ast *make_ast_compound_statement(void) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_COMPOUND_STATEMENT;
+  p->left = p->right = NULL;
+  p->statement = vector_new();
   return p;
 }
 
@@ -201,7 +209,7 @@ static Ast *expr(void) {
   Ast *p = primary_expr();
   if (current_token()->type == TK_ASSIGN) {
     if (p->type != AST_VAR)
-      error_with_token(current_token(), "cannot assign rvalue to lvalue");
+      error_with_token(current_token(), "expression is not assignable");
     next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr());
   } else {
@@ -209,8 +217,38 @@ static Ast *expr(void) {
   }
 }
 
-// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')' '{'
-//   { <expr> ';' } '}'
+static Ast *statement(void);
+
+// <compound_statement> = '{' { <statement> } '}'
+static Ast *compound_statement(void) {
+  // current token is '{' when enter this function.
+  Ast *p = make_ast_compound_statement();
+
+  next_token();
+  while (current_token()->type != TK_RCUR)
+    vector_push_back(p->statement, (void *)statement());
+  next_token();
+
+  return p;
+}
+
+static Ast *expr_statement(void) {
+  Ast *p = expr();
+  expect_token(current_token(), TK_SEMI);
+  next_token();
+  return p;
+}
+
+// <statement> = <compound_statement> | <expr_statement>
+static Ast *statement(void) {
+  if (current_token()->type == TK_LCUR)
+    return compound_statement();
+  else
+    return expr_statement();
+}
+
+// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')'
+//   <compound_statement>
 static Ast *decl_function(void) {
   expect_token(current_token(), TK_IDENT);
 
@@ -233,12 +271,8 @@ static Ast *decl_function(void) {
     error("too many arguments");
 
   expect_token(next_token(), TK_LCUR);
-  while (next_token()->type != TK_RCUR) {
-    vector_push_back(p->expr, (void *)expr());
-    expect_token(current_token(), TK_SEMI);
-  }
+  p->left = compound_statement();
 
-  next_token();
   return p;
 }
 
@@ -363,12 +397,16 @@ static void codegen(Ast *p) {
                *(int *)(map_get(symbol_table, s)->val) * -4);
       }
 
-      for (int i = 0; i < p->expr->size; i++)
-        codegen((Ast *)vector_at(p->expr, i));
+      codegen(p->left);
+
       printf("\tpopq %%rax\n");
       printf("\tmovq %%rbp, %%rsp\n");
       printf("\tpopq %%rbp\n");
       printf("\tret\n");
+      break;
+    case AST_COMPOUND_STATEMENT:
+      for (int i = 0; i < p->statement->size; i++)
+        codegen((Ast *)vector_at(p->statement, i));
       break;
   }
 }
