@@ -80,3 +80,21 @@ runtest 'main() { x = 7; add_eight_args(1, 2 * 2, 3, 4 + 4, 5 / 5 + 5, 6, x, 8 *
 echo "=== declare function ==="
 runtest 'add(a, b) { a + b; } main() { add(3, 9); }' 12
 runtest 'test(a, b, c, d, e, f) { a + b * b + c + d + d + e / e + e + f; } main() { a = test(1, 2, 3, 4, 5, 6); a * 2 + 3; }' 59
+
+echo "=== if statement ==="
+runtest 'main() {
+  if (1 == 2) {
+    1;
+  } else {
+    2;
+  }
+}' 2;
+runtest 'fact(n) {
+  if (n == 0) print_n(n);
+  if (n == 0)
+    1;
+  else if (n == 1)
+    1;
+  else
+    n * fact(n-1);
+} main() { fact(5); }' 120;

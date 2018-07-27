@@ -39,3 +39,8 @@ void expect_token(Token *tk, int expect) {
     error_with_token(tk,
                      allocate_concat_string(token[expect], " was expected"));
 }
+
+int get_sequence_num(void) {
+  static int seq = 0;
+  return seq++;
+}

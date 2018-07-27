@@ -16,6 +16,7 @@ enum {
   AST_CALL_FUNC,
   AST_DECL_FUNC,
   AST_COMPOUND_STATEMENT,
+  AST_IF_STATEMENT
 };
 
 typedef struct _Ast {
@@ -27,6 +28,7 @@ typedef struct _Ast {
   Map *symbol_table;
   struct _Ast *left;
   struct _Ast *right;
+  struct _Ast *cond;
 } Ast;
 
 TokenQueue token_queue;
@@ -80,6 +82,13 @@ static Ast *make_ast_compound_statement(void) {
   p->type = AST_COMPOUND_STATEMENT;
   p->left = p->right = NULL;
   p->statement = vector_new();
+  return p;
+}
+
+static Ast *make_ast_if_statement(void) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_IF_STATEMENT;
+  p->left = p->right = NULL;
   return p;
 }
 
@@ -219,6 +228,27 @@ static Ast *expr(void) {
 
 static Ast *statement(void);
 
+// <selection_statement> = 'if' '(' <expression> ')' <statement>
+//   [ 'else' <statement> ]
+static Ast *selection_statement(void) {
+  // current token is 'if' when enter this function.
+  Ast *p = make_ast_if_statement();
+
+  expect_token(next_token(), TK_LPAR);
+  next_token();
+  p->cond = expr();
+  expect_token(current_token(), TK_RPAR);
+  next_token();
+  p->left = statement();
+
+  if (current_token()->type == TK_ELSE) {
+    next_token();
+    p->right = statement();
+  }
+
+  return p;
+}
+
 // <compound_statement> = '{' { <statement> } '}'
 static Ast *compound_statement(void) {
   // current token is '{' when enter this function.
@@ -239,9 +269,11 @@ static Ast *expr_statement(void) {
   return p;
 }
 
-// <statement> = <compound_statement> | <expr_statement>
+// <statement> = <selection_statement> | <compound_statement> | <expr_statement>
 static Ast *statement(void) {
-  if (current_token()->type == TK_LCUR)
+  if (current_token()->type == TK_IF)
+    return selection_statement();
+  else if (current_token()->type == TK_LCUR)
     return compound_statement();
   else
     return expr_statement();
@@ -355,6 +387,7 @@ static void codegen(Ast *p) {
       printf("\tpopq %%rax\n");
       printf("\tcmpl %%edx, %%eax\n");
       printf("\t%s %%al\n", p->type == AST_OP_EQUAL ? "sete" : "setne");
+      printf("\tmovzbl %%al, %%eax\n");
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_ASSIGN:
@@ -407,6 +440,22 @@ static void codegen(Ast *p) {
     case AST_COMPOUND_STATEMENT:
       for (int i = 0; i < p->statement->size; i++)
         codegen((Ast *)vector_at(p->statement, i));
+      break;
+    case AST_IF_STATEMENT:
+      codegen(p->cond);
+      printf("\tpopq %%rax\n");
+      printf("\ttest %%rax, %%rax\n");
+      int seq1 = get_sequence_num();
+      printf("\tjz .L%d\n", seq1);
+      codegen(p->left);
+      if (p->right != NULL) {
+        int seq2 = get_sequence_num();
+        printf("\tjmp .L%d\n", seq2);
+        printf(".L%d:\n", seq1);
+        codegen(p->right);
+        printf(".L%d:\n", seq2);
+      } else
+        printf(".L%d:\n", seq1);
       break;
   }
 }

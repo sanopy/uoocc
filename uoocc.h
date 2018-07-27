@@ -51,6 +51,8 @@ enum {
   TK_RCUR,
   TK_EQUAL,
   TK_NEQUAL,
+  TK_IF,
+  TK_ELSE,
 };
 
 typedef struct {
@@ -79,3 +81,4 @@ int *allocate_integer(int);
 void error(char *);
 void error_with_token(Token *, char *);
 void expect_token(Token *, int);
+int get_sequence_num(void);

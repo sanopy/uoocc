@@ -131,7 +131,12 @@ void init_token_queue(FILE *fp) {
       now_col += strlen(s) - 1;
     } else if (isalpha(c) || c == '_') {
       char *s = read_ident(fp, c);
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_IDENT, s));
+      if (strcmp(s, "if") == 0)
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_IF, s));
+      else if (strcmp(s, "else") == 0)
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_ELSE, s));
+      else
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_IDENT, s));
       now_col += strlen(s) - 1;
     } else
       error("unknown token has read");
