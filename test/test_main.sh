@@ -57,6 +57,18 @@ runtest 'main() { 6 - (5 - 4); }' 5
 runtest 'main() { (1 + 2) * 3; }' 9
 runtest 'main() { (1 + 2) * 3 + (4 + 5 + 6) * 2; }' 39
 
+echo "=== relational expression ==="
+runtest 'main() { 3 < 5; }' 1
+runtest 'main() { 5 < 5; }' 0
+runtest 'main() { 3 <= 5; }' 1
+runtest 'main() { 5 <= 5; }' 1
+runtest 'main() { 5 <= 3; }' 0
+runtest 'main() { 5 > 3; }' 1
+runtest 'main() { 5 > 5; }' 0
+runtest 'main() { 5 >= 3; }' 1
+runtest 'main() { 5 >= 5; }' 1
+runtest 'main() { 3 >= 5; }' 0
+
 echo "=== equality expression ==="
 runtest 'main() { 25 == 25; }' 1
 runtest 'main() { 10 + 5 == 3 * 5; }' 1
@@ -88,13 +100,18 @@ runtest 'main() {
   } else {
     2;
   }
-}' 2;
+}' 2
 runtest 'fact(n) {
-  if (n == 0) print_n(n);
-  if (n == 0)
-    1;
-  else if (n == 1)
+  if (n <= 1)
     1;
   else
     n * fact(n-1);
-} main() { fact(5); }' 120;
+} main() { fact(5); }' 120
+runtest 'fib(n) {
+  if (n <= 0)
+    0;
+  else if (n == 1)
+    1;
+  else
+    fib(n-1) + fib(n-2);
+} main() { fib(8); }' 21

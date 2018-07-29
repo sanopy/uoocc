@@ -117,7 +117,27 @@ void init_token_queue(FILE *fp) {
     else if (c == '}')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_RCUR,
                                              allocate_string("}")));
-    else if (c == '!') {
+    else if (c == '<') {
+      if ((c = getc(fp)) == '=') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_LE,
+                                               allocate_string("<=")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_LT,
+                                               allocate_string("<")));
+      }
+    } else if (c == '>') {
+      if ((c = getc(fp)) == '=') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_GE,
+                                               allocate_string(">=")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_GT,
+                                               allocate_string(">")));
+      }
+    } else if (c == '!') {
       if ((c = getc(fp)) == '=') {
         now_col++;
         vector_push_back(v, (void *)make_token(now_row, now_col, TK_NEQUAL,

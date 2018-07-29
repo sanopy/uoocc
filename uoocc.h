@@ -38,21 +38,25 @@ enum {
   TK_EOF,
   TK_NUM,
   TK_IDENT,
-  TK_PLUS,
-  TK_MINUS,
-  TK_MUL,
-  TK_DIV,
-  TK_LPAR,
-  TK_RPAR,
-  TK_ASSIGN,
-  TK_SEMI,
-  TK_COMMA,
-  TK_LCUR,
-  TK_RCUR,
-  TK_EQUAL,
-  TK_NEQUAL,
-  TK_IF,
-  TK_ELSE,
+  TK_PLUS,    // +
+  TK_MINUS,   // -
+  TK_MUL,     // *
+  TK_DIV,     // /
+  TK_LPAR,    // (
+  TK_RPAR,    // )
+  TK_ASSIGN,  // =
+  TK_SEMI,    // ;
+  TK_COMMA,   // ,
+  TK_LCUR,    // {
+  TK_RCUR,    // }
+  TK_LT,      // <
+  TK_LE,      // <=
+  TK_GT,      // >
+  TK_GE,      // >=
+  TK_EQUAL,   // ==
+  TK_NEQUAL,  // !=
+  TK_IF,      // if
+  TK_ELSE,    // else
 };
 
 typedef struct {

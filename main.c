@@ -9,6 +9,10 @@ enum {
   AST_OP_SUB,
   AST_OP_MUL,
   AST_OP_DIV,
+  AST_OP_LT,
+  AST_OP_LE,
+  AST_OP_GT,
+  AST_OP_GE,
   AST_OP_EQUAL,
   AST_OP_NEQUAL,
   AST_OP_ASSIGN,
@@ -191,15 +195,46 @@ static Ast *additive_expr(Ast *prim) {
 }
 
 /*
-  <equality_expr> = <additive_expr> <equality_expr_tail>
-  <equality_expr_tail> = ε | '==' <additive_expr> <equality_expr_tail> |
-    '!=' <additive_expr> <equality_expr_tail>
+  <relational_expr> = <additive_expr> <relational_expr_tail>
+  <relational_expr_tail> = ε | '==' <additive_expr> <relational_expr_tail> |
+    '!=' <additive_expr> <relational_expr_tail>
+*/
+static Ast *relational_expr_tail(Ast *left) {
+  int type = current_token()->type;
+  if (type == TK_LT || type == TK_LE || type == TK_GT || type == TK_GE) {
+    next_token();
+    Ast *right = additive_expr(NULL);
+    int ast_op;
+    if (type == TK_LT)
+      ast_op = AST_OP_LT;
+    else if (type == TK_LE)
+      ast_op = AST_OP_LE;
+    else if (type == TK_GT)
+      ast_op = AST_OP_GT;
+    else
+      ast_op = AST_OP_GE;
+    Ast *p = make_ast_op(ast_op, left, right);
+    return relational_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *relational_expr(Ast *prim) {
+  Ast *p = additive_expr(prim);
+  return relational_expr_tail(p);
+}
+
+/*
+  <equality_expr> = <relational_expr> <equality_expr_tail>
+  <equality_expr_tail> = ε | '==' <relational_expr> <equality_expr_tail> |
+    '!=' <relational_expr> <equality_expr_tail>
 */
 static Ast *equality_expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_EQUAL || type == TK_NEQUAL) {
     next_token();
-    Ast *right = additive_expr(NULL);
+    Ast *right = relational_expr(NULL);
     int ast_op = type == TK_EQUAL ? AST_OP_EQUAL : AST_OP_NEQUAL;
     Ast *p = make_ast_op(ast_op, left, right);
     return equality_expr_tail(p);
@@ -209,7 +244,7 @@ static Ast *equality_expr_tail(Ast *left) {
 }
 
 static Ast *equality_expr(Ast *prim) {
-  Ast *p = additive_expr(prim);
+  Ast *p = relational_expr(prim);
   return equality_expr_tail(p);
 }
 
@@ -379,6 +414,10 @@ static void codegen(Ast *p) {
       }
       printf("\tpushq %%rax\n");
       break;
+    case AST_OP_LT:
+    case AST_OP_LE:
+    case AST_OP_GT:
+    case AST_OP_GE:
     case AST_OP_EQUAL:
     case AST_OP_NEQUAL:
       codegen(p->left);
@@ -386,7 +425,20 @@ static void codegen(Ast *p) {
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\tcmpl %%edx, %%eax\n");
-      printf("\t%s %%al\n", p->type == AST_OP_EQUAL ? "sete" : "setne");
+      char *s;
+      if (p->type == AST_OP_LT)
+        s = allocate_string("setl");
+      else if (p->type == AST_OP_LE)
+        s = allocate_string("setle");
+      else if (p->type == AST_OP_GT)
+        s = allocate_string("setg");
+      else if (p->type == AST_OP_GE)
+        s = allocate_string("setge");
+      else if (p->type == AST_OP_EQUAL)
+        s = allocate_string("sete");
+      else
+        s = allocate_string("setne");
+      printf("\t%s %%al\n", s);
       printf("\tmovzbl %%al, %%eax\n");
       printf("\tpushq %%rax\n");
       break;
