@@ -77,13 +77,27 @@ void init_token_queue(FILE *fp) {
       continue;
     }
 
-    if (c == '+')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_PLUS,
-                                             allocate_string("+")));
-    else if (c == '-')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MINUS,
-                                             allocate_string("-")));
-    else if (c == '*')
+    if (c == '+') {
+      if ((c = getc(fp)) == '+') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_INC,
+                                               allocate_string("++")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_PLUS,
+                                               allocate_string("+")));
+      }
+    } else if (c == '-') {
+      if ((c = getc(fp)) == '-') {
+        now_col++;
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_DEC,
+                                               allocate_string("--")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(v, (void *)make_token(now_row, now_col, TK_MINUS,
+                                               allocate_string("-")));
+      }
+    } else if (c == '*')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_MUL,
                                              allocate_string("*")));
     else if (c == '/')

@@ -49,6 +49,8 @@ enum {
   TK_COMMA,   // ,
   TK_LCUR,    // {
   TK_RCUR,    // }
+  TK_INC,     // ++
+  TK_DEC,     // --
   TK_LT,      // <
   TK_LE,      // <=
   TK_GT,      // >

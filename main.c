@@ -9,6 +9,8 @@ enum {
   AST_OP_SUB,
   AST_OP_MUL,
   AST_OP_DIV,
+  AST_OP_INC,
+  AST_OP_DEC,
   AST_OP_LT,
   AST_OP_LE,
   AST_OP_GT,
@@ -149,15 +151,39 @@ static Ast *primary_expr(void) {
 }
 
 /*
-  <multiplicative_expr> = <primary_expr> <multiplicative_expr_tail>
-  <multiplicative_expr_tail> = ε | '*' <primary_expr> <multiplicative_expr_tail>
-    | '/' <primary_expr> <multiplicative_expr_tail>
+  <postfix_expr> = <primary_expr> <postfix_expr_tail>
+  <postfix_expr_tail> = ε | '++' <postfix_expr_tail> | '--' <postfix_expr_tail>
+*/
+static Ast *postfix_expr_tail(Ast *left) {
+  int type = current_token()->type;
+  if (type == TK_INC || type == TK_DEC) {
+    if (left == NULL || left->type != AST_VAR)
+      error_with_token(current_token(), "expression is not assignable");
+    next_token();
+    Ast *right = postfix_expr_tail(NULL);
+    int ast_op = type == TK_INC ? AST_OP_INC : AST_OP_DEC;
+    Ast *p = make_ast_op(ast_op, left, right);
+    return postfix_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *postfix_expr(Ast *prim) {
+  Ast *p = prim == NULL ? primary_expr() : prim;
+  return postfix_expr_tail(p);
+}
+
+/*
+  <multiplicative_expr> = <postfix_expr> <multiplicative_expr_tail>
+  <multiplicative_expr_tail> = ε | '*' <postfix_expr> <multiplicative_expr_tail>
+    | '/' <postfix_expr> <multiplicative_expr_tail>
 */
 static Ast *multiplicative_expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_MUL || type == TK_DIV) {
     next_token();
-    Ast *right = primary_expr();
+    Ast *right = postfix_expr(NULL);
     int ast_op = type == TK_MUL ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right);
     return multiplicative_expr_tail(p);
@@ -167,7 +193,7 @@ static Ast *multiplicative_expr_tail(Ast *left) {
 }
 
 static Ast *multiplicative_expr(Ast *prim) {
-  Ast *p = prim == NULL ? primary_expr() : prim;
+  Ast *p = postfix_expr(prim);
   return multiplicative_expr_tail(p);
 }
 
@@ -196,8 +222,10 @@ static Ast *additive_expr(Ast *prim) {
 
 /*
   <relational_expr> = <additive_expr> <relational_expr_tail>
-  <relational_expr_tail> = ε | '==' <additive_expr> <relational_expr_tail> |
-    '!=' <additive_expr> <relational_expr_tail>
+  <relational_expr_tail> = ε | '<' <additive_expr> <relational_expr_tail> |
+    '<=' <additive_expr> <relational_expr_tail> |
+    '>'  <additive_expr> <relational_expr_tail> |
+    '>=' <additive_expr> <relational_expr_tail>
 */
 static Ast *relational_expr_tail(Ast *left) {
   int type = current_token()->type;
@@ -413,6 +441,14 @@ static void codegen(Ast *p) {
         printf("\tdiv %%rbx\n");
       }
       printf("\tpushq %%rax\n");
+      break;
+    case AST_OP_INC:
+    case AST_OP_DEC:
+      codegen(p->left);
+      printf("\tpopq %%rax\n");
+      printf("\tpushq %%rax\n");
+      printf("\t%s %d(%%rbp)\n", p->type == AST_OP_INC ? "incl" : "decl",
+             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
       break;
     case AST_OP_LT:
     case AST_OP_LE:
