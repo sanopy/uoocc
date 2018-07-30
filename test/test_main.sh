@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
 total=0
 
 assertEquals() {
   actual=$1
   expected=$2
-  if [ $actual = $expected ]; then
+  if [ "$actual" = "$expected" ]; then
     echo "Test $total: Passed"
   else
     echo "Test $total: Failed"
@@ -28,6 +28,14 @@ printtest() {
   gcc test.s test/func.c -o test.out
   assertEquals `./test.out` $2
   rm -f test.s test.out
+}
+
+failtest() {
+  actual=`echo "$1" | ./cc.out 2>&1 >/dev/null`
+  expected=$2
+  len1=${#actual}
+  len2=${#expected}
+  assertEquals "${actual:$((len1-len2))}" "$expected"
 }
 
 echo '=== number ==='
@@ -141,3 +149,24 @@ runtest 'main() {
     sum = sum + i++;
   sum;
 }' 55
+
+echo "=== fail test ==="
+failtest '1;' "ident was expected."
+failtest 'main) {}' "'(' was expected."
+failtest 'main( {}' "ident was expected."
+failtest 'main() }' "'{' was expected."
+failtest 'main() {' "primary-expression was expected."
+failtest 'main() { 1 }' "';' was expected."
+failtest 'main() { 1 1; }' "';' was expected."
+failtest 'main() { 1 + ; }' "primary-expression was expected."
+failtest 'main() { (); }' "primary-expression was expected."
+failtest 'main() { (1 + 3; }' "')' was expected."
+failtest 'main() { 1 + 3); }' "';' was expected."
+failtest 'main() { 1 = 1; }' "expression is not assignable."
+failtest 'main() { ++1; }' "expression is not assignable."
+failtest 'main() { 1++; }' "expression is not assignable."
+failtest 'main() { a; a++ = 1; }' "expression is not assignable."
+failtest 'main() { a; ++a = 1; }' "expression is not assignable."
+failtest 'f(a, b, c, d, e, f, g) {}' "too many arguments."
+failtest 'main() { if () {} }' "primary-expression was expected."
+failtest 'main() { while () {} }' "primary-expression was expected."

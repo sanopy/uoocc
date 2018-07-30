@@ -128,7 +128,7 @@ static Ast *call_function(void) {
 // <primary_expr> = <ident> | <number> | '(' <expr> ')' | <call_function>
 static Ast *primary_expr(void) {
   int type = current_token()->type;
-  Ast *ret;
+  Ast *ret = NULL;
   if (type == TK_LPAR) {
     next_token();
     ret = expr();
@@ -137,10 +137,9 @@ static Ast *primary_expr(void) {
   } else if (type == TK_NUM) {
     ret = make_ast_int(current_token()->number);
     next_token();
-  } else if (current_token()->type == TK_IDENT &&
-             second_token()->type == TK_LPAR) {
+  } else if (type == TK_IDENT && second_token()->type == TK_LPAR) {
     ret = call_function();
-  } else {
+  } else if (type == TK_IDENT) {
     if (map_get(symbol_table, current_token()->text) == NULL) {
       MapEntry *e = allocate_MapEntry(current_token()->text,
                                       allocate_integer(symbol_table->size + 1));
@@ -148,7 +147,8 @@ static Ast *primary_expr(void) {
     }
     ret = make_ast_var(current_token()->text);
     next_token();
-  }
+  } else
+    error_with_token(current_token(), "primary-expression was expected");
 
   return ret;
 }
@@ -385,9 +385,10 @@ static Ast *statement(void) {
 // <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')'
 //   <compound_statement>
 static Ast *decl_function(void) {
-  expect_token(current_token(), TK_IDENT);
+  Token *tk = current_token();
+  expect_token(tk, TK_IDENT);
 
-  Ast *p = make_ast_decl_func(current_token()->text);
+  Ast *p = make_ast_decl_func(tk->text);
   expect_token(next_token(), TK_LPAR);
 
   if (second_token()->type != TK_RPAR) {
@@ -403,7 +404,7 @@ static Ast *decl_function(void) {
     next_token();
 
   if (p->args->size > 6)
-    error("too many arguments");
+    error_with_token(tk, "too many arguments");
 
   expect_token(next_token(), TK_LCUR);
   p->left = compound_statement();
