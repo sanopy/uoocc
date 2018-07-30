@@ -127,3 +127,17 @@ runtest 'fib(n) {
   else
     fib(n-1) + fib(n-2);
 } main() { fib(8); }' 21
+
+echo "=== while statement ==="
+runtest 'main() {
+  i = 1;
+  while (i < 10)
+    i++;
+  i;
+}' 10
+runtest 'main() {
+  sum = 0; i = 1;
+  while (i <= 10)
+    sum = sum + i++;
+  sum;
+}' 55

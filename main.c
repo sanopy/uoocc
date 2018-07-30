@@ -24,7 +24,8 @@ enum {
   AST_CALL_FUNC,
   AST_DECL_FUNC,
   AST_COMPOUND_STATEMENT,
-  AST_IF_STATEMENT
+  AST_IF_STATEMENT,
+  AST_WHILE_STATEMENT,
 };
 
 typedef struct _Ast {
@@ -93,9 +94,9 @@ static Ast *make_ast_compound_statement(void) {
   return p;
 }
 
-static Ast *make_ast_if_statement(void) {
+static Ast *make_ast_statement(int type) {
   Ast *p = malloc(sizeof(Ast));
-  p->type = AST_IF_STATEMENT;
+  p->type = type;
   p->left = p->right = NULL;
   return p;
 }
@@ -316,7 +317,7 @@ static Ast *statement(void);
 //   [ 'else' <statement> ]
 static Ast *selection_statement(void) {
   // current token is 'if' when enter this function.
-  Ast *p = make_ast_if_statement();
+  Ast *p = make_ast_statement(AST_IF_STATEMENT);
 
   expect_token(next_token(), TK_LPAR);
   next_token();
@@ -329,6 +330,21 @@ static Ast *selection_statement(void) {
     next_token();
     p->right = statement();
   }
+
+  return p;
+}
+
+// <iteration_statement> = 'while' '(' <expr> ')' <statement>
+static Ast *iteration_statement(void) {
+  // current token is 'while' when enter this function.
+  Ast *p = make_ast_statement(AST_WHILE_STATEMENT);
+
+  expect_token(next_token(), TK_LPAR);
+  next_token();
+  p->cond = expr();
+  expect_token(current_token(), TK_RPAR);
+  next_token();
+  p->left = statement();
 
   return p;
 }
@@ -353,10 +369,13 @@ static Ast *expr_statement(void) {
   return p;
 }
 
-// <statement> = <selection_statement> | <compound_statement> | <expr_statement>
+// <statement> = <selection_statement> | <iteration_statement> |
+//   <compound_statement> | <expr_statement>
 static Ast *statement(void) {
   if (current_token()->type == TK_IF)
     return selection_statement();
+  else if (current_token()->type == TK_WHILE)
+    return iteration_statement();
   else if (current_token()->type == TK_LCUR)
     return compound_statement();
   else
@@ -572,6 +591,18 @@ static void codegen(Ast *p) {
       } else
         printf(".L%d:\n", seq1);
       break;
+    case AST_WHILE_STATEMENT: {
+      int seq1 = get_sequence_num(), seq2 = get_sequence_num();
+      printf(".L%d:\n", seq1);
+      codegen(p->cond);
+      printf("\tpopq %%rax\n");
+      printf("\ttest %%rax, %%rax\n");
+      printf("\tjz .L%d\n", seq2);
+      codegen(p->left);
+      printf("\tjmp .L%d\n", seq1);
+      printf(".L%d:\n", seq2);
+      break;
+    }
   }
 }
 

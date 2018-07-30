@@ -59,6 +59,7 @@ enum {
   TK_NEQUAL,  // !=
   TK_IF,      // if
   TK_ELSE,    // else
+  TK_WHILE,   // while
 };
 
 typedef struct {
