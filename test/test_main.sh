@@ -57,13 +57,17 @@ runtest 'main() { 6 - (5 - 4); }' 5
 runtest 'main() { (1 + 2) * 3; }' 9
 runtest 'main() { (1 + 2) * 3 + (4 + 5 + 6) * 2; }' 39
 
+echo "=== unary expression ==="
+runtest 'main() { a = 1; ++a; }' 2
+runtest 'main() { a = 1; ++a; a; }' 2
+runtest 'main() { a = 3; --a; }' 2
+runtest 'main() { a = 3; --a; a; }' 2
+
 echo "=== postfix expression ==="
 runtest 'main() { a = 1; a++; }' 1
 runtest 'main() { a = 1; a++; a; }' 2
-runtest 'main() { a = 1; a++ + a * a++; }' 5
 runtest 'main() { a = 3; a--; }' 3
 runtest 'main() { a = 3; a--; a; }' 2
-runtest 'main() { a = 3; a-- + a * a--; }' 7
 
 echo "=== relational expression ==="
 runtest 'main() { 3 < 5; }' 1

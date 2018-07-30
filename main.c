@@ -9,8 +9,10 @@ enum {
   AST_OP_SUB,
   AST_OP_MUL,
   AST_OP_DIV,
-  AST_OP_INC,
-  AST_OP_DEC,
+  AST_OP_POST_INC,
+  AST_OP_POST_DEC,
+  AST_OP_PRE_INC,
+  AST_OP_PRE_DEC,
   AST_OP_LT,
   AST_OP_LE,
   AST_OP_GT,
@@ -161,7 +163,7 @@ static Ast *postfix_expr_tail(Ast *left) {
       error_with_token(current_token(), "expression is not assignable");
     next_token();
     Ast *right = postfix_expr_tail(NULL);
-    int ast_op = type == TK_INC ? AST_OP_INC : AST_OP_DEC;
+    int ast_op = type == TK_INC ? AST_OP_POST_INC : AST_OP_POST_DEC;
     Ast *p = make_ast_op(ast_op, left, right);
     return postfix_expr_tail(p);
   } else {
@@ -169,21 +171,40 @@ static Ast *postfix_expr_tail(Ast *left) {
   }
 }
 
-static Ast *postfix_expr(Ast *prim) {
-  Ast *p = prim == NULL ? primary_expr() : prim;
+static Ast *postfix_expr(void) {
+  Ast *p = primary_expr();
   return postfix_expr_tail(p);
 }
 
 /*
-  <multiplicative_expr> = <postfix_expr> <multiplicative_expr_tail>
-  <multiplicative_expr_tail> = ε | '*' <postfix_expr> <multiplicative_expr_tail>
-    | '/' <postfix_expr> <multiplicative_expr_tail>
+  <unary_expr> = <postfix_expr> | '++' <unary_expr> | '--' <unary_expr>
+*/
+static Ast *unary_expr(void) {
+  Token *tk = current_token();
+  int type = tk->type;
+  if (type == TK_INC || type == TK_DEC) {
+    next_token();
+    Ast *left = unary_expr();
+    if (left == NULL || left->type != AST_VAR)
+      error_with_token(tk, "expression is not assignable");
+    int ast_op = type == TK_INC ? AST_OP_PRE_INC : AST_OP_PRE_DEC;
+    Ast *p = make_ast_op(ast_op, left, NULL);
+    return postfix_expr_tail(p);
+  } else {
+    return postfix_expr();
+  }
+}
+
+/*
+  <multiplicative_expr> = <unary_expr> <multiplicative_expr_tail>
+  <multiplicative_expr_tail> = ε | '*' <unary_expr> <multiplicative_expr_tail>
+    | '/' <unary_expr> <multiplicative_expr_tail>
 */
 static Ast *multiplicative_expr_tail(Ast *left) {
   int type = current_token()->type;
   if (type == TK_MUL || type == TK_DIV) {
     next_token();
-    Ast *right = postfix_expr(NULL);
+    Ast *right = unary_expr();
     int ast_op = type == TK_MUL ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right);
     return multiplicative_expr_tail(p);
@@ -192,8 +213,8 @@ static Ast *multiplicative_expr_tail(Ast *left) {
   }
 }
 
-static Ast *multiplicative_expr(Ast *prim) {
-  Ast *p = postfix_expr(prim);
+static Ast *multiplicative_expr(Ast *unary) {
+  Ast *p = unary == NULL ? unary_expr() : unary;
   return multiplicative_expr_tail(p);
 }
 
@@ -215,8 +236,8 @@ static Ast *additive_expr_tail(Ast *left) {
   }
 }
 
-static Ast *additive_expr(Ast *prim) {
-  Ast *p = multiplicative_expr(prim);
+static Ast *additive_expr(Ast *unary) {
+  Ast *p = multiplicative_expr(unary);
   return additive_expr_tail(p);
 }
 
@@ -248,8 +269,8 @@ static Ast *relational_expr_tail(Ast *left) {
   }
 }
 
-static Ast *relational_expr(Ast *prim) {
-  Ast *p = additive_expr(prim);
+static Ast *relational_expr(Ast *unary) {
+  Ast *p = additive_expr(unary);
   return relational_expr_tail(p);
 }
 
@@ -271,14 +292,14 @@ static Ast *equality_expr_tail(Ast *left) {
   }
 }
 
-static Ast *equality_expr(Ast *prim) {
-  Ast *p = relational_expr(prim);
+static Ast *equality_expr(Ast *unary) {
+  Ast *p = relational_expr(unary);
   return equality_expr_tail(p);
 }
 
-// <expr> = <primary_expr> '=' <expr> | <equality_expr>
+// <expr> = <unary_expr> '=' <expr> | <equality_expr>
 static Ast *expr(void) {
-  Ast *p = primary_expr();
+  Ast *p = unary_expr();
   if (current_token()->type == TK_ASSIGN) {
     if (p->type != AST_VAR)
       error_with_token(current_token(), "expression is not assignable");
@@ -442,12 +463,18 @@ static void codegen(Ast *p) {
       }
       printf("\tpushq %%rax\n");
       break;
-    case AST_OP_INC:
-    case AST_OP_DEC:
-      codegen(p->left);
-      printf("\tpopq %%rax\n");
-      printf("\tpushq %%rax\n");
-      printf("\t%s %d(%%rbp)\n", p->type == AST_OP_INC ? "incl" : "decl",
+    case AST_OP_POST_INC:
+    case AST_OP_POST_DEC:
+      printf("\tpushq %d(%%rbp)\n",
+             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
+      printf("\t%s %d(%%rbp)\n", p->type == AST_OP_POST_INC ? "incl" : "decl",
+             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
+      break;
+    case AST_OP_PRE_INC:
+    case AST_OP_PRE_DEC:
+      printf("\t%s %d(%%rbp)\n", p->type == AST_OP_PRE_INC ? "incl" : "decl",
+             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
+      printf("\tpushq %d(%%rbp)\n",
              *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
       break;
     case AST_OP_LT:
