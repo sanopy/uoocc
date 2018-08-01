@@ -26,6 +26,7 @@ enum {
   AST_COMPOUND_STATEMENT,
   AST_IF_STATEMENT,
   AST_WHILE_STATEMENT,
+  AST_FOR_STATEMENT,
 };
 
 typedef struct _Ast {
@@ -33,11 +34,14 @@ typedef struct _Ast {
   int ival;
   char *ident;
   Vector *args;
-  Vector *statement;
+  Vector *statements;
   Map *symbol_table;
   struct _Ast *left;
   struct _Ast *right;
   struct _Ast *cond;
+  struct _Ast *init;
+  struct _Ast *step;
+  struct _Ast *statement;
 } Ast;
 
 TokenQueue token_queue;
@@ -90,7 +94,7 @@ static Ast *make_ast_compound_statement(void) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_COMPOUND_STATEMENT;
   p->left = p->right = NULL;
-  p->statement = vector_new();
+  p->statements = vector_new();
   return p;
 }
 
@@ -334,17 +338,40 @@ static Ast *selection_statement(void) {
   return p;
 }
 
-// <iteration_statement> = 'while' '(' <expr> ')' <statement>
+/*
+  <iteration_statement> =
+    'while' '(' <expr> ')' <statement> |
+    'for' '(' <expr> ';' <expr> ';' <expr> ')' <statement>
+*/
 static Ast *iteration_statement(void) {
-  // current token is 'while' when enter this function.
-  Ast *p = make_ast_statement(AST_WHILE_STATEMENT);
+  // current token is 'while' or 'for' when enter this function.
+  Ast *p;
 
-  expect_token(next_token(), TK_LPAR);
-  next_token();
-  p->cond = expr();
-  expect_token(current_token(), TK_RPAR);
-  next_token();
-  p->left = statement();
+  if (current_token()->type == TK_WHILE) {
+    p = make_ast_statement(AST_WHILE_STATEMENT);
+
+    expect_token(next_token(), TK_LPAR);
+    next_token();
+    p->cond = expr();
+    expect_token(current_token(), TK_RPAR);
+    next_token();
+    p->statement = statement();
+  } else {
+    p = make_ast_statement(AST_FOR_STATEMENT);
+
+    expect_token(next_token(), TK_LPAR);
+    next_token();
+    p->init = expr();
+    expect_token(current_token(), TK_SEMI);
+    next_token();
+    p->cond = expr();
+    expect_token(current_token(), TK_SEMI);
+    next_token();
+    p->step = expr();
+    expect_token(current_token(), TK_RPAR);
+    next_token();
+    p->statement = statement();
+  }
 
   return p;
 }
@@ -356,7 +383,7 @@ static Ast *compound_statement(void) {
 
   next_token();
   while (current_token()->type != TK_RCUR)
-    vector_push_back(p->statement, (void *)statement());
+    vector_push_back(p->statements, (void *)statement());
   next_token();
 
   return p;
@@ -374,7 +401,7 @@ static Ast *expr_statement(void) {
 static Ast *statement(void) {
   if (current_token()->type == TK_IF)
     return selection_statement();
-  else if (current_token()->type == TK_WHILE)
+  else if (current_token()->type == TK_WHILE || current_token()->type == TK_FOR)
     return iteration_statement();
   else if (current_token()->type == TK_LCUR)
     return compound_statement();
@@ -407,7 +434,7 @@ static Ast *decl_function(void) {
     error_with_token(tk, "too many arguments");
 
   expect_token(next_token(), TK_LCUR);
-  p->left = compound_statement();
+  p->statement = compound_statement();
 
   return p;
 }
@@ -565,7 +592,7 @@ static void codegen(Ast *p) {
                *(int *)(map_get(symbol_table, s)->val) * -4);
       }
 
-      codegen(p->left);
+      codegen(p->statement);
 
       printf("\tpopq %%rax\n");
       printf("\tmovq %%rbp, %%rsp\n");
@@ -573,8 +600,8 @@ static void codegen(Ast *p) {
       printf("\tret\n");
       break;
     case AST_COMPOUND_STATEMENT:
-      for (int i = 0; i < p->statement->size; i++)
-        codegen((Ast *)vector_at(p->statement, i));
+      for (int i = 0; i < p->statements->size; i++)
+        codegen((Ast *)vector_at(p->statements, i));
       break;
     case AST_IF_STATEMENT:
       codegen(p->cond);
@@ -599,7 +626,21 @@ static void codegen(Ast *p) {
       printf("\tpopq %%rax\n");
       printf("\ttest %%rax, %%rax\n");
       printf("\tjz .L%d\n", seq2);
-      codegen(p->left);
+      codegen(p->statement);
+      printf("\tjmp .L%d\n", seq1);
+      printf(".L%d:\n", seq2);
+      break;
+    }
+    case AST_FOR_STATEMENT: {
+      int seq1 = get_sequence_num(), seq2 = get_sequence_num();
+      codegen(p->init);
+      printf(".L%d:\n", seq1);
+      codegen(p->cond);
+      printf("\tpopq %%rax\n");
+      printf("\ttest %%rax, %%rax\n");
+      printf("\tjz .L%d\n", seq2);
+      codegen(p->statement);
+      codegen(p->step);
       printf("\tjmp .L%d\n", seq1);
       printf(".L%d:\n", seq2);
       break;

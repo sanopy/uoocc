@@ -150,6 +150,17 @@ runtest 'main() {
   sum;
 }' 55
 
+echo "=== for statement ==="
+runtest 'main() {
+  for (i = 0; i < 10; i++) i;
+}' 9
+runtest 'main() {
+  sum = 0;
+  for (i = 1; i <= 10; i++)
+    sum = sum + i;
+  sum;
+}' 55
+
 echo "=== fail test ==="
 failtest '1;' "ident was expected."
 failtest 'main) {}' "'(' was expected."
