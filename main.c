@@ -503,6 +503,12 @@ void debug_print(Ast *p) {
   }
 }
 
+static void emit_lvalue(Ast *p) {
+  printf("\tleaq %d(%%rbp), %%rax\n",
+         *(int *)(map_get(symbol_table, p->ident)->val) * -4);
+  printf("\tpushq %%rax\n");
+}
+
 static void codegen(Ast *p) {
   if (p == NULL)
     return;
@@ -577,11 +583,12 @@ static void codegen(Ast *p) {
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_ASSIGN:
+      emit_lvalue(p->left);
       codegen(p->right);
+      printf("\tpopq %%rdi\n");
       printf("\tpopq %%rax\n");
-      printf("\tmovl %%eax, %d(%%rbp)\n",
-             *(int *)(map_get(symbol_table, p->left->ident)->val) * -4);
-      printf("\tpushq %%rax\n");
+      printf("\tmovl %%edi, (%%rax)\n");
+      printf("\tpushq %%rdi\n");
       break;
     case AST_VAR:
       printf("\tpushq %d(%%rbp)\n",
