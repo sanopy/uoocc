@@ -144,11 +144,10 @@ static Ast *primary_expr(void) {
   } else if (type == TK_IDENT && second_token()->type == TK_LPAR) {
     ret = call_function();
   } else if (type == TK_IDENT) {
-    if (map_get(symbol_table, current_token()->text) == NULL) {
-      MapEntry *e = allocate_MapEntry(current_token()->text,
-                                      allocate_integer(symbol_table->size + 1));
-      map_put(symbol_table, e);
-    }
+    if (map_get(symbol_table, current_token()->text) == NULL)
+      error_with_token(current_token(),
+                       allocate_concat_3string("use of undeclared identifier '",
+                                               current_token()->text, "'"));
     ret = make_ast_var(current_token()->text);
     next_token();
   } else
@@ -315,6 +314,20 @@ static Ast *expr(void) {
   }
 }
 
+// <declaration> = 'int' <ident> ';'
+static void declaration(void) {
+  // current token is 'int' when enter this function.
+  Token *tk = next_token();
+  MapEntry *e =
+      allocate_MapEntry(tk->text, allocate_integer(symbol_table->size + 1));
+  if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
+    error_with_token(
+        tk, allocate_concat_3string("redifinition of '", tk->text, "'"));
+  map_put(symbol_table, e);
+  expect_token(next_token(), TK_SEMI);
+  next_token();
+}
+
 static Ast *statement(void);
 
 // <selection_statement> = 'if' '(' <expression> ')' <statement>
@@ -376,14 +389,18 @@ static Ast *iteration_statement(void) {
   return p;
 }
 
-// <compound_statement> = '{' { <statement> } '}'
+// <compound_statement> = '{' { <declaration> | <statement> } '}'
 static Ast *compound_statement(void) {
   // current token is '{' when enter this function.
   Ast *p = make_ast_compound_statement();
 
   next_token();
-  while (current_token()->type != TK_RCUR)
-    vector_push_back(p->statements, (void *)statement());
+  while (current_token()->type != TK_RCUR) {
+    if (current_token()->type == TK_INT)
+      declaration();
+    else
+      vector_push_back(p->statements, (void *)statement());
+  }
   next_token();
 
   return p;
@@ -409,10 +426,11 @@ static Ast *statement(void) {
     return expr_statement();
 }
 
-// <decl_function> = <ident> '(' [ <ident> { ',' <ident> } ] ')'
-//   <compound_statement>
+// <decl_function> = 'int' <ident>
+//   '(' [ 'int' <ident> { ',' 'int' <ident> } ] ')' <compound_statement>
 static Ast *decl_function(void) {
-  Token *tk = current_token();
+  // current token is 'int' when enter this function.
+  Token *tk = next_token();
   expect_token(tk, TK_IDENT);
 
   Ast *p = make_ast_decl_func(tk->text);
@@ -420,9 +438,14 @@ static Ast *decl_function(void) {
 
   if (second_token()->type != TK_RPAR) {
     do {
+      expect_token(next_token(), TK_INT);
       expect_token(next_token(), TK_IDENT);
       MapEntry *e = allocate_MapEntry(current_token()->text,
                                       allocate_integer(symbol_table->size + 1));
+      if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
+        error_with_token(current_token(),
+                         allocate_concat_3string("redifinition of '",
+                                                 current_token()->text, "'"));
       map_put(symbol_table, e);
       vector_push_back(p->args, (void *)make_ast_var(current_token()->text));
     } while (next_token()->type == TK_COMMA);
@@ -444,6 +467,7 @@ static Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
+    expect_token(current_token(), TK_INT);
     Ast *p = decl_function();
     vector_push_back(v, (void *)p);
   }

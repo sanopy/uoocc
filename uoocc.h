@@ -61,6 +61,7 @@ enum {
   TK_ELSE,    // else
   TK_WHILE,   // while
   TK_FOR,     // for
+  TK_INT,     // int
 };
 
 typedef struct {
@@ -85,6 +86,8 @@ Token *next_token(void);
 
 // mylib.c
 char *allocate_string(char *);
+char *allocate_concat_2string(char *, char *);
+char *allocate_concat_3string(char *, char *, char *);
 int *allocate_integer(int);
 void error(char *);
 void error_with_token(Token *, char *);

@@ -3,16 +3,25 @@
 #include <string.h>
 #include "uoocc.h"
 
-static char *allocate_concat_string(char *s1, char *s2) {
+char *allocate_string(char *s) {
+  char *p = (char *)malloc(sizeof(char) * (strlen(s) + 1));
+  strcpy(p, s);
+  return p;
+}
+
+char *allocate_concat_2string(char *s1, char *s2) {
   char *p = (char *)malloc(sizeof(char) * (strlen(s1) + strlen(s2) + 1));
   strcpy(p, s1);
   strcat(p, s2);
   return p;
 }
 
-char *allocate_string(char *s) {
-  char *p = (char *)malloc(sizeof(char) * (strlen(s) + 1));
-  strcpy(p, s);
+char *allocate_concat_3string(char *s1, char *s2, char *s3) {
+  char *p =
+      (char *)malloc(sizeof(char) * (strlen(s1) + strlen(s2) + strlen(s3) + 1));
+  strcpy(p, s1);
+  strcat(p, s2);
+  strcat(p, s3);
   return p;
 }
 
@@ -33,15 +42,16 @@ void error_with_token(Token *tk, char *s) {
 }
 
 void expect_token(Token *tk, int expect) {
-  char *token[] = {"EOF", "number", "ident", "'+'",   "'-'", "'*'", "'/'",
-                   "'('", "')'",    "'='",   "';'",   "','", "'{'", "'}'",
-                   "++",  "--",     "<",     "<=",    ">",   ">=",  "==",
-                   "!=",  "if",     "else",  "while", "for"};
+  char *token[] = {"EOF",     "number", "ident", "'+'",  "'-'",  "'*'",
+                   "'/'",     "'('",    "')'",   "'='",  "';'",  "','",
+                   "'{'",     "'}'",    "'++'",  "'--'", "'<'",  "'<='",
+                   "'>'",     "'>='",   "'=='",  "'!='", "'if'", "'else'",
+                   "'while'", "'for'",  "'int'"};
   if (tk == NULL)
-    error(allocate_concat_string(token[expect], " was expected"));
+    error(allocate_concat_2string(token[expect], " was expected"));
   else if (tk->type != expect)
     error_with_token(tk,
-                     allocate_concat_string(token[expect], " was expected"));
+                     allocate_concat_2string(token[expect], " was expected"));
 }
 
 int get_sequence_num(void) {
