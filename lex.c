@@ -98,11 +98,14 @@ void init_token_queue(FILE *fp) {
                                                allocate_string("-")));
       }
     } else if (c == '*')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_MUL,
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_STAR,
                                              allocate_string("*")));
     else if (c == '/')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_DIV,
                                              allocate_string("/")));
+    else if (c == '&')
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_AMP,
+                                             allocate_string("&")));
     else if (c == '(')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_LPAR,
                                              allocate_string("(")));

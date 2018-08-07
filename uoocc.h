@@ -40,8 +40,9 @@ enum {
   TK_IDENT,
   TK_PLUS,    // +
   TK_MINUS,   // -
-  TK_MUL,     // *
+  TK_STAR,    // *
   TK_DIV,     // /
+  TK_AMP,     // &
   TK_LPAR,    // (
   TK_RPAR,    // )
   TK_ASSIGN,  // =

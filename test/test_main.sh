@@ -66,10 +66,17 @@ runtest 'int main() { (1 + 2) * 3; }' 9
 runtest 'int main() { (1 + 2) * 3 + (4 + 5 + 6) * 2; }' 39
 
 echo "=== unary expression ==="
+echo " - increment / decrement"
 runtest 'int main() { int a; a = 1; ++a; }' 2
 runtest 'int main() { int a; a = 1; ++a; a; }' 2
 runtest 'int main() { int a; a = 3; --a; }' 2
 runtest 'int main() { int a; a = 3; --a; a; }' 2
+echo " - pointer"
+runtest 'int main() { int a; a = 7; int *p; p = &a; *p; }' 7
+runtest 'int main() { int a; int *p;
+ p = &a;
+ *p = 15; *p; }' 15
+runtest 'int main() { int a; a = 3; int *p; p = &a; *p = 9; a; }' 9
 
 echo "=== postfix expression ==="
 runtest 'int main() { int a; a = 1; a++; }' 1
@@ -191,8 +198,14 @@ failtest 'int main() { 1++; }' "expression is not assignable."
 failtest 'int main() { int a; a++ = 1; }' "expression is not assignable."
 failtest 'int main() { int a; ++a = 1; }' "expression is not assignable."
 failtest 'int main() { int x; int x; }' "redifinition of 'x'."
+failtest 'int main() { int 1; }' "ident was expected."
 failtest 'int main() { x = 1; }' "use of undeclared identifier 'x'."
+failtest 'int main() { int *p; p = 1; }' "expression is not assignable."
+failtest 'int main() { int a; int *p; p = a; }' "expression is not assignable."
+failtest 'int main() { int *p; **p; }' "indirection requires pointer operand."
+failtest 'int main() { *1; }' "indirection requires pointer operand."
 failtest 'int f(x) {}' "'int' was expected."
+failtest 'int main(int 1) {}' "ident was expected."
 failtest 'int f(int x, int x) {}' "redifinition of 'x'."
 failtest 'int f(int a, int b, int c, int d, int e, int f, int g) {}' "too many arguments."
 failtest 'int main() { if () {} }' "primary-expression was expected."

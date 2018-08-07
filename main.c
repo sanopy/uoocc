@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "uoocc.h"
@@ -13,6 +12,8 @@ enum {
   AST_OP_POST_DEC,
   AST_OP_PRE_INC,
   AST_OP_PRE_DEC,
+  AST_OP_REF,
+  AST_OP_DEREF,
   AST_OP_LT,
   AST_OP_LE,
   AST_OP_GT,
@@ -30,13 +31,30 @@ enum {
   AST_FOR_STATEMENT,
 };
 
+enum {
+  TYPE_INT,
+  TYPE_PTR,
+};
+
+typedef struct _CType {
+  int type;
+  struct _CType *ptrof;
+} CType;
+
+typedef struct {
+  CType *ctype;
+  int offset;
+} SymbolTableEntry;
+
 typedef struct _Ast {
   int type;
+  CType *ctype;
   int ival;
   char *ident;
   Vector *args;
   Vector *statements;
   Map *symbol_table;
+  int offset_from_bp;
   Token *token;
   struct _Ast *left;
   struct _Ast *right;
@@ -48,6 +66,13 @@ typedef struct _Ast {
 
 TokenQueue token_queue;
 Map *symbol_table;
+
+static CType *make_ctype(int type, CType *ptrof) {
+  CType *p = (CType *)malloc(sizeof(CType));
+  p->type = type;
+  p->ptrof = ptrof;
+  return p;
+}
 
 static Ast *make_ast_op(int type, Ast *left, Ast *right, Token *token) {
   Ast *p = malloc(sizeof(Ast));
@@ -61,8 +86,8 @@ static Ast *make_ast_op(int type, Ast *left, Ast *right, Token *token) {
 static Ast *make_ast_int(int val) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_INT;
+  p->ctype = make_ctype(TYPE_INT, NULL);
   p->ival = val;
-  p->left = p->right = NULL;
   return p;
 }
 
@@ -70,16 +95,15 @@ static Ast *make_ast_var(char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_VAR;
   p->ident = ident;
-  p->left = p->right = NULL;
   p->token = token;
   return p;
 }
 
-static Ast *make_ast_declaration(char *ident, Token *token) {
+static Ast *make_ast_declaration(CType *ctype, char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_DECLARATION;
+  p->ctype = ctype;
   p->ident = ident;
-  p->left = p->right = NULL;
   p->token = token;
   return p;
 }
@@ -87,17 +111,17 @@ static Ast *make_ast_declaration(char *ident, Token *token) {
 static Ast *make_ast_call_func(char *ident) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_CALL_FUNC;
+  p->ctype = make_ctype(TYPE_INT, NULL);
   p->ident = ident;
-  p->left = p->right = NULL;
   p->args = vector_new();
   return p;
 }
 
-static Ast *make_ast_decl_func(char *ident) {
+static Ast *make_ast_decl_func(char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_DECL_FUNC;
   p->ident = ident;
-  p->left = p->right = NULL;
+  p->token = token;
   p->args = vector_new();
   p->symbol_table = map_new();
   return p;
@@ -106,7 +130,6 @@ static Ast *make_ast_decl_func(char *ident) {
 static Ast *make_ast_compound_statement(void) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_COMPOUND_STATEMENT;
-  p->left = p->right = NULL;
   p->statements = vector_new();
   return p;
 }
@@ -114,8 +137,27 @@ static Ast *make_ast_compound_statement(void) {
 static Ast *make_ast_statement(int type) {
   Ast *p = malloc(sizeof(Ast));
   p->type = type;
-  p->left = p->right = NULL;
   return p;
+}
+
+static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int offset) {
+  SymbolTableEntry *p = (SymbolTableEntry *)malloc(sizeof(SymbolTableEntry));
+  p->ctype = ctype;
+  p->offset = offset;
+  return p;
+}
+
+int offset_from_bp;
+static int get_offset_from_bp(int type) {
+  if (type == TYPE_INT)
+    offset_from_bp += 4;
+  else if (type == TYPE_PTR) {
+    if (offset_from_bp % 8 == 0)
+      offset_from_bp += 8;
+    else
+      offset_from_bp += 8 - offset_from_bp % 8 + 8;
+  }
+  return offset_from_bp;
 }
 
 static Ast *expr(void);
@@ -189,15 +231,28 @@ static Ast *postfix_expr(void) {
 }
 
 /*
-  <unary_expr> = <postfix_expr> | '++' <unary_expr> | '--' <unary_expr>
+  <unary_expr> = <postfix_expr> | '++' <unary_expr> | '--' <unary_expr> |
+    '&' <unary_expr> | '*' <unary_expr>
 */
 static Ast *unary_expr(void) {
   Token *tk = current_token();
   int type = tk->type;
-  if (type == TK_INC || type == TK_DEC) {
+  int ast_op;
+
+  if (type == TK_INC)
+    ast_op = AST_OP_PRE_INC;
+  else if (type == TK_DEC)
+    ast_op = AST_OP_PRE_DEC;
+  else if (type == TK_AMP)
+    ast_op = AST_OP_REF;
+  else if (type == TK_STAR)
+    ast_op = AST_OP_DEREF;
+  else
+    ast_op = -1;
+
+  if (ast_op != -1) {
     next_token();
     Ast *left = unary_expr();
-    int ast_op = type == TK_INC ? AST_OP_PRE_INC : AST_OP_PRE_DEC;
     Ast *p = make_ast_op(ast_op, left, NULL, tk);
     return postfix_expr_tail(p);
   } else {
@@ -213,10 +268,10 @@ static Ast *unary_expr(void) {
 static Ast *multiplicative_expr_tail(Ast *left) {
   Token *tk = current_token();
   int type = tk->type;
-  if (type == TK_MUL || type == TK_DIV) {
+  if (type == TK_STAR || type == TK_DIV) {
     next_token();
     Ast *right = unary_expr();
-    int ast_op = type == TK_MUL ? AST_OP_MUL : AST_OP_DIV;
+    int ast_op = type == TK_STAR ? AST_OP_MUL : AST_OP_DIV;
     Ast *p = make_ast_op(ast_op, left, right, tk);
     return multiplicative_expr_tail(p);
   } else {
@@ -323,11 +378,18 @@ static Ast *expr(void) {
   }
 }
 
-// <declaration> = 'int' <ident> ';'
+// <declaration> = 'int' { '*' } <ident> ';'
 static Ast *declaration(void) {
   // current token is 'int' when enter this function.
-  Token *tk = next_token();
-  Ast *p = make_ast_declaration(tk->text, tk);
+  CType *ctype = make_ctype(TYPE_INT, NULL);
+
+  while (next_token()->type == TK_STAR)
+    ctype = make_ctype(TYPE_PTR, ctype);
+
+  expect_token(current_token(), TK_IDENT);
+
+  Token *tk = current_token();
+  Ast *p = make_ast_declaration(ctype, tk->text, tk);
   expect_token(next_token(), TK_SEMI);
   next_token();
   return p;
@@ -432,21 +494,28 @@ static Ast *statement(void) {
 }
 
 // <decl_function> = 'int' <ident>
-//   '(' [ 'int' <ident> { ',' 'int' <ident> } ] ')' <compound_statement>
+//   '(' [ 'int' { '*' } <ident> { ',' 'int' { '*' } <ident> } ] ')'
+//   <compound_statement>
 static Ast *decl_function(void) {
   // current token is 'int' when enter this function.
   Token *tk = next_token();
   expect_token(tk, TK_IDENT);
 
-  Ast *p = make_ast_decl_func(tk->text);
+  Ast *p = make_ast_decl_func(tk->text, tk);
   expect_token(next_token(), TK_LPAR);
 
   if (second_token()->type != TK_RPAR) {
     do {
       expect_token(next_token(), TK_INT);
-      expect_token(next_token(), TK_IDENT);
-      vector_push_back(p->args, (void *)make_ast_var(current_token()->text,
-                                                     current_token()));
+      CType *ctype = make_ctype(TYPE_INT, NULL);
+
+      while (next_token()->type == TK_STAR)
+        ctype = make_ctype(TYPE_PTR, ctype);
+
+      expect_token(current_token(), TK_IDENT);
+      vector_push_back(
+          p->args, (void *)make_ast_declaration(ctype, current_token()->text,
+                                                current_token()));
     } while (next_token()->type == TK_COMMA);
     expect_token(current_token(), TK_RPAR);
   } else
@@ -471,34 +540,6 @@ static Vector *program(void) {
   return v;
 }
 
-void debug_print(Ast *p) {
-  if (p == NULL)
-    return;
-  else if (p->type == AST_INT)
-    printf("%d", p->ival);
-  else if (p->type == AST_OP_ADD || p->type == AST_OP_SUB) {
-    printf("(%c ", p->type == AST_OP_ADD ? '+' : '-');
-    debug_print(p->left);
-    printf(" ");
-    debug_print(p->right);
-    printf(")");
-  } else if (p->type == AST_OP_MUL || p->type == AST_OP_DIV) {
-    printf("(%c ", p->type == AST_OP_MUL ? '*' : '/');
-    debug_print(p->left);
-    printf(" ");
-    debug_print(p->right);
-    printf(")");
-  } else if (p->type == AST_OP_ASSIGN) {
-    printf("(= ");
-    debug_print(p->left);
-    printf(" ");
-    debug_print(p->right);
-    printf(")");
-  } else if (p->type == AST_VAR) {
-    printf("%s", p->ident);
-  }
-}
-
 static void semantic_analysis(Ast *p) {
   if (p == NULL)
     return;
@@ -516,6 +557,7 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_NEQUAL:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
+      p->ctype = p->left->ctype;
       break;
     case AST_OP_POST_INC:
     case AST_OP_POST_DEC:
@@ -523,22 +565,40 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_PRE_DEC:
       if (p->left == NULL || p->left->type != AST_VAR)
         error_with_token(p->token, "expression is not assignable");
+      p->ctype = p->left->ctype;
+      break;
+    case AST_OP_REF:
+      semantic_analysis(p->left);
+      p->ctype = make_ctype(TYPE_PTR, p->left->ctype);
+      break;
+    case AST_OP_DEREF:
+      semantic_analysis(p->left);
+      if (p->left->ctype->type != TYPE_PTR || p->left->ctype->ptrof == NULL)
+        error_with_token(p->token, "indirection requires pointer operand");
+      p->ctype = p->left->ctype->ptrof;
       break;
     case AST_OP_ASSIGN:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
-      if (p->left->type != AST_VAR)
+      if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF)
         error_with_token(p->token, "expression is not assignable");
+      else if (p->left->ctype->type != p->right->ctype->type)
+        error_with_token(p->token, "expression is not assignable");
+      p->ctype = p->left->ctype;
       break;
     case AST_VAR:
       if (map_get(symbol_table, p->ident) == NULL)  // undefined variable.
         error_with_token(
             p->token, allocate_concat_3string("use of undeclared identifier '",
                                               p->ident, "'"));
+      else
+        p->ctype =
+            ((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->ctype;
       break;
     case AST_DECLARATION: {
-      MapEntry *e =
-          allocate_MapEntry(p->ident, allocate_integer(symbol_table->size + 1));
+      SymbolTableEntry *_e =
+          make_SymbolTableEntry(p->ctype, get_offset_from_bp(p->ctype->type));
+      MapEntry *e = allocate_MapEntry(p->ident, (void *)_e);
       if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
         error_with_token(p->token, allocate_concat_3string("redifinition of '",
                                                            p->ident, "'"));
@@ -551,19 +611,13 @@ static void semantic_analysis(Ast *p) {
       break;
     case AST_DECL_FUNC:
       symbol_table = p->symbol_table;
+      offset_from_bp = 0;
       if (p->args->size > 6)
         error_with_token(p->token, "too many arguments");
-      for (int i = 0; i < p->args->size; i++) {
-        Ast *var = (Ast *)vector_at(p->args, i);
-        MapEntry *e = allocate_MapEntry(
-            var->ident, allocate_integer(symbol_table->size + 1));
-        if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
-          error_with_token(
-              var->token,
-              allocate_concat_3string("redifinition of '", var->ident, "'"));
-        map_put(symbol_table, e);
-      }
+      for (int i = 0; i < p->args->size; i++)
+        semantic_analysis((Ast *)vector_at(p->args, i));
       semantic_analysis(p->statement);
+      p->offset_from_bp = offset_from_bp;
       break;
     case AST_COMPOUND_STATEMENT:
       for (int i = 0; i < p->statements->size; i++)
@@ -584,10 +638,16 @@ static void semantic_analysis(Ast *p) {
   }
 }
 
+static void codegen(Ast *);
+
 static void emit_lvalue(Ast *p) {
-  printf("\tleaq %d(%%rbp), %%rax\n",
-         *(int *)(map_get(symbol_table, p->ident)->val) * -4);
-  printf("\tpushq %%rax\n");
+  if (p->type == AST_OP_DEREF) {
+    codegen(p->left);
+  } else if (p->type == AST_VAR) {
+    printf("\tleaq %d(%%rbp), %%rax\n",
+           -((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->offset);
+    printf("\tpushq %%rax\n");
+  }
 }
 
 static void codegen(Ast *p) {
@@ -635,6 +695,14 @@ static void codegen(Ast *p) {
       printf("\t%s (%%rax)\n", p->type == AST_OP_PRE_INC ? "incl" : "decl");
       printf("\tpushq (%%rax)\n");
       break;
+    case AST_OP_REF:
+      emit_lvalue(p->left);
+      break;
+    case AST_OP_DEREF:
+      codegen(p->left);
+      printf("\tpopq %%rax\n");
+      printf("\tpushq (%%rax)\n");
+      break;
     case AST_OP_LT:
     case AST_OP_LE:
     case AST_OP_GT:
@@ -672,8 +740,9 @@ static void codegen(Ast *p) {
       printf("\tpushq %%rdi\n");
       break;
     case AST_VAR:
-      printf("\tpushq %d(%%rbp)\n",
-             *(int *)(map_get(symbol_table, p->ident)->val) * -4);
+      printf(
+          "\tpushq %d(%%rbp)\n",
+          -((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->offset);
       break;
     case AST_CALL_FUNC:
       for (int i = p->args->size - 1; i >= 0; i--)
@@ -691,17 +760,17 @@ static void codegen(Ast *p) {
       printf("%s:\n", p->ident);
       printf("\tpushq %%rbp\n");
       printf("\tmovq %%rsp, %%rbp\n");
-      if (symbol_table->size > 0 && (symbol_table->size * 4) % 16 == 0)
-        printf("\tsub $%d, %%rsp\n", symbol_table->size * 4);
+      if (p->offset_from_bp > 0 && (p->offset_from_bp) % 16 == 0)
+        printf("\tsub $%d, %%rsp\n", p->offset_from_bp);
       else if (p->symbol_table->size > 0)
         printf("\tsub $%d, %%rsp\n",
-               (symbol_table->size * 4) + (16 - (symbol_table->size * 4) % 16));
+               (p->offset_from_bp) + (16 - p->offset_from_bp % 16));
 
       for (int i = 0; i < (p->args->size > 6 ? 6 : p->args->size); i++) {
         char *s = ((Ast *)vector_at(p->args, i))->ident;
         char *reg[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
         printf("\tmovl %%%s, %d(%%rbp)\n", reg[i],
-               *(int *)(map_get(symbol_table, s)->val) * -4);
+               -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
       }
 
       codegen(p->statement);
