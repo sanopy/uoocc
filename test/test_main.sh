@@ -73,10 +73,12 @@ runtest 'int main() { int a; a = 3; --a; }' 2
 runtest 'int main() { int a; a = 3; --a; a; }' 2
 echo " - pointer"
 runtest 'int main() { int a; a = 7; int *p; p = &a; *p; }' 7
-runtest 'int main() { int a; int *p;
- p = &a;
- *p = 15; *p; }' 15
+runtest 'int main() { int a; int *p; p = &a; *p = 15; *p; }' 15
 runtest 'int main() { int a; a = 3; int *p; p = &a; *p = 9; a; }' 9
+runtest 'int swap(int *p, int *q) { int tmp; tmp = *p; *p = *q; *q = tmp; }
+int main() { int a; a = 5; int b; b = 9; swap(&a, &b); a; }' 9
+runtest 'int swap(int *p, int *q) { int tmp; tmp = *p; *p = *q; *q = tmp; }
+int main() { int a; a = 5; int b; b = 9; swap(&a, &b); b; }' 5
 
 echo "=== postfix expression ==="
 runtest 'int main() { int a; a = 1; a++; }' 1

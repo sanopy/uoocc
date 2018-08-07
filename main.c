@@ -736,7 +736,10 @@ static void codegen(Ast *p) {
       codegen(p->right);
       printf("\tpopq %%rdi\n");
       printf("\tpopq %%rax\n");
-      printf("\tmovl %%edi, (%%rax)\n");
+      if (p->left->ctype->type == TYPE_PTR)
+        printf("\tmovq %%rdi, (%%rax)\n");
+      else
+        printf("\tmovl %%edi, (%%rax)\n");
       printf("\tpushq %%rdi\n");
       break;
     case AST_VAR:
@@ -762,15 +765,21 @@ static void codegen(Ast *p) {
       printf("\tmovq %%rsp, %%rbp\n");
       if (p->offset_from_bp > 0 && (p->offset_from_bp) % 16 == 0)
         printf("\tsub $%d, %%rsp\n", p->offset_from_bp);
-      else if (p->symbol_table->size > 0)
+      else if (p->offset_from_bp > 0)
         printf("\tsub $%d, %%rsp\n",
                (p->offset_from_bp) + (16 - p->offset_from_bp % 16));
 
       for (int i = 0; i < (p->args->size > 6 ? 6 : p->args->size); i++) {
-        char *s = ((Ast *)vector_at(p->args, i))->ident;
-        char *reg[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
-        printf("\tmovl %%%s, %d(%%rbp)\n", reg[i],
-               -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
+        Ast *node = (Ast *)vector_at(p->args, i);
+        char *s = node->ident;
+        char *reg32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+        char *reg64[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+        if (node->ctype->type == TYPE_INT)
+          printf("\tmovl %%%s, %d(%%rbp)\n", reg32[i],
+                 -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
+        else
+          printf("\tmovq %%%s, %d(%%rbp)\n", reg64[i],
+                 -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
       }
 
       codegen(p->statement);
