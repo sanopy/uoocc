@@ -546,7 +546,25 @@ static void semantic_analysis(Ast *p) {
 
   switch (p->type) {
     case AST_OP_ADD:
+      semantic_analysis(p->left);
+      semantic_analysis(p->right);
+      if (p->left->ctype->type == TYPE_PTR && p->right->ctype->type == TYPE_PTR)
+        error_with_token(p->token, "invalid operands to binary expression");
+      else if (p->right->ctype->type == TYPE_PTR)
+        p->ctype = p->right->ctype;
+      else
+        p->ctype = p->left->ctype;
+      break;
     case AST_OP_SUB:
+      semantic_analysis(p->left);
+      semantic_analysis(p->right);
+      if (p->left->ctype->type == TYPE_PTR && p->right->ctype->type == TYPE_PTR)
+        p->ctype = make_ctype(TYPE_INT, NULL);
+      else if (p->right->ctype->type == TYPE_PTR)
+        p->ctype = p->right->ctype;
+      else
+        p->ctype = p->left->ctype;
+      break;
     case AST_OP_MUL:
     case AST_OP_DIV:
     case AST_OP_LT:
@@ -565,6 +583,7 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_PRE_DEC:
       if (p->left == NULL || p->left->type != AST_VAR)
         error_with_token(p->token, "expression is not assignable");
+      semantic_analysis(p->left);
       p->ctype = p->left->ctype;
       break;
     case AST_OP_REF:
@@ -636,6 +655,8 @@ static void semantic_analysis(Ast *p) {
       semantic_analysis(p->statement);
       break;
   }
+
+  return;
 }
 
 static void codegen(Ast *);
@@ -650,9 +671,9 @@ static void emit_lvalue(Ast *p) {
   }
 }
 
-static void codegen(Ast *p) {
-  if (p == NULL)
-    return;
+static void emit_expr(Ast *p) {
+  CType *ltype = p->left == NULL ? NULL : p->left->ctype;
+  CType *rtype = p->right == NULL ? NULL : p->right->ctype;
 
   switch (p->type) {
     case AST_INT:
@@ -664,7 +685,18 @@ static void codegen(Ast *p) {
       codegen(p->right);
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
-      printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "add" : "sub");
+      if (ltype->type == TYPE_INT && rtype->type == TYPE_INT)
+        printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "addl" : "subl");
+      else if (ltype->type == TYPE_PTR && rtype->type == TYPE_PTR) {
+        printf("\tsubq %%rdx, %%rax\n");
+        printf("\tsarq $%d, %%rax\n", ltype->ptrof->type == TYPE_INT ? 2 : 3);
+      } else {
+        if (ltype->type == TYPE_INT)
+          printf("\tsalq $%d, %%rax\n", rtype->ptrof->type == TYPE_INT ? 2 : 3);
+        else
+          printf("\tsalq $%d, %%rdx\n", ltype->ptrof->type == TYPE_INT ? 2 : 3);
+        printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
+      }
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_MUL:
@@ -681,19 +713,69 @@ static void codegen(Ast *p) {
       }
       printf("\tpushq %%rax\n");
       break;
+    case AST_OP_ASSIGN:
+      emit_lvalue(p->left);
+      codegen(p->right);
+      printf("\tpopq %%rdi\n");
+      printf("\tpopq %%rax\n");
+      if (p->left->ctype->type == TYPE_PTR)
+        printf("\tmovq %%rdi, (%%rax)\n");
+      else
+        printf("\tmovl %%edi, (%%rax)\n");
+      printf("\tpushq %%rdi\n");
+      break;
+  }
+}
+
+static void codegen(Ast *p) {
+  if (p == NULL)
+    return;
+
+  CType *ltype = p->left == NULL ? NULL : p->left->ctype;
+
+  switch (p->type) {
+    case AST_INT:
+      printf("\tpushq $%d\n", p->ival);
+      break;
+    case AST_OP_ADD:
+    case AST_OP_SUB:
+    case AST_OP_MUL:
+    case AST_OP_DIV:
+    case AST_OP_ASSIGN:
+      emit_expr(p);
+      break;
     case AST_OP_POST_INC:
     case AST_OP_POST_DEC:
       emit_lvalue(p->left);
       printf("\tpopq %%rax\n");
       printf("\tpushq (%%rax)\n");
-      printf("\t%s (%%rax)\n", p->type == AST_OP_POST_INC ? "incl" : "decl");
+      if (ltype->type == TYPE_INT) {
+        printf("\t%s (%%rax)\n", p->type == AST_OP_POST_INC ? "incl" : "decl");
+      } else {
+        Ast *right =
+            make_ast_op(p->type == AST_OP_POST_INC ? AST_OP_ADD : AST_OP_SUB,
+                        p->left, make_ast_int(1), p->token);
+        Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
+        semantic_analysis(node);
+        emit_expr(node);
+        printf("\tpopq %%rax\n");
+      }
       break;
     case AST_OP_PRE_INC:
     case AST_OP_PRE_DEC:
       emit_lvalue(p->left);
       printf("\tpopq %%rax\n");
-      printf("\t%s (%%rax)\n", p->type == AST_OP_PRE_INC ? "incl" : "decl");
-      printf("\tpushq (%%rax)\n");
+      if (ltype->type == TYPE_INT) {
+        printf("\t%s (%%rax)\n", p->type == AST_OP_PRE_INC ? "incl" : "decl");
+        printf("\tpushq (%%rax)\n");
+      } else {
+        Ast *right =
+            make_ast_op(p->type == AST_OP_PRE_INC ? AST_OP_ADD : AST_OP_SUB,
+                        p->left, make_ast_int(1), p->token);
+        Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
+        semantic_analysis(node);
+        emit_expr(node);
+      }
       break;
     case AST_OP_REF:
       emit_lvalue(p->left);
@@ -730,17 +812,6 @@ static void codegen(Ast *p) {
       printf("\t%s %%al\n", s);
       printf("\tmovzbl %%al, %%eax\n");
       printf("\tpushq %%rax\n");
-      break;
-    case AST_OP_ASSIGN:
-      emit_lvalue(p->left);
-      codegen(p->right);
-      printf("\tpopq %%rdi\n");
-      printf("\tpopq %%rax\n");
-      if (p->left->ctype->type == TYPE_PTR)
-        printf("\tmovq %%rdi, (%%rax)\n");
-      else
-        printf("\tmovl %%edi, (%%rax)\n");
-      printf("\tpushq %%rdi\n");
       break;
     case AST_VAR:
       printf(

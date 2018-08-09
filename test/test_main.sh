@@ -44,12 +44,19 @@ runtest 'int main() { 2; }' 2
 runtest 'int main() { 9; }' 9
 
 echo '=== additive expression ==='
+echo " - integer"
 runtest 'int main() { 1 + 2; }' 3
 runtest 'int main() { 2 - 1; }' 1
 runtest 'int main() { 1 + 2 + 3; }' 6
 runtest 'int main() { 3 - 2 - 1; }' 0
 runtest 'int main() { 5 + 6 - 3; }' 8
 runtest 'int main() { 3 + 5 - 3 + 6; }' 11
+echo " - pointer"
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); *p; }' 1
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = 2 + p; *p; }' 4
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; *p; }' 8
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; p = p - 2; *p; }' 2
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; q - p; }' 3
 
 echo '=== multiplicative expression ==='
 runtest 'int main() { 2 * 3; }' 6
@@ -72,6 +79,8 @@ runtest 'int main() { int a; a = 1; ++a; a; }' 2
 runtest 'int main() { int a; a = 3; --a; }' 2
 runtest 'int main() { int a; a = 3; --a; a; }' 2
 echo " - pointer"
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); *(++p); }' 2
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; *(--p); }' 4
 runtest 'int main() { int a; a = 7; int *p; p = &a; *p; }' 7
 runtest 'int main() { int a; int *p; p = &a; *p = 15; *p; }' 15
 runtest 'int main() { int a; a = 3; int *p; p = &a; *p = 9; a; }' 9
@@ -85,6 +94,10 @@ runtest 'int main() { int a; a = 1; a++; }' 1
 runtest 'int main() { int a; a = 1; a++; a; }' 2
 runtest 'int main() { int a; a = 3; a--; }' 3
 runtest 'int main() { int a; a = 3; a--; a; }' 2
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); *(p++); }' 1
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p++; *p; }' 2
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; *(p--); }' 8
+runtest 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; p--; *p; }' 4
 
 echo "=== relational expression ==="
 runtest 'int main() { 3 < 5; }' 1

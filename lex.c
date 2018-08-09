@@ -24,13 +24,19 @@ static char *read_number(FILE *fp, char c) {
   return allocate_string(num);
 }
 
-// [a-zA-Z_]+
+// [a-zA-Z_] [0-9a-zA-Z_]*
 static char *read_ident(FILE *fp, char c) {
   char ident[MAX_TOKEN_LENGTH];
   int idx = 0;
 
+  if (!(isalpha(c) || c == '_')) {
+    ungetc(c, fp);
+    ident[idx] = '\0';
+    return allocate_string(ident);
+  }
+
   while (c != EOF) {
-    if (!(isalpha(c) || c == '_')) {
+    if (!(isalpha(c) || isdigit(c) || c == '_')) {
       ungetc(c, fp);
       break;
     }
