@@ -16,8 +16,6 @@ enum {
   AST_OP_DEREF,
   AST_OP_LT,
   AST_OP_LE,
-  AST_OP_GT,
-  AST_OP_GE,
   AST_OP_EQUAL,
   AST_OP_NEQUAL,
   AST_OP_ASSIGN,
@@ -320,17 +318,15 @@ static Ast *relational_expr_tail(Ast *left) {
   int type = tk->type;
   if (type == TK_LT || type == TK_LE || type == TK_GT || type == TK_GE) {
     next_token();
-    Ast *right = additive_expr(NULL);
-    int ast_op;
+    Ast *p, *right = additive_expr(NULL);
     if (type == TK_LT)
-      ast_op = AST_OP_LT;
+      p = make_ast_op(AST_OP_LT, left, right, tk);
     else if (type == TK_LE)
-      ast_op = AST_OP_LE;
-    else if (type == TK_GT)
-      ast_op = AST_OP_GT;
-    else
-      ast_op = AST_OP_GE;
-    Ast *p = make_ast_op(ast_op, left, right, tk);
+      p = make_ast_op(AST_OP_LE, left, right, tk);
+    else if (type == TK_GT)  // a > b <=> b < a
+      p = make_ast_op(AST_OP_LT, right, left, tk);
+    else  // a >= b <=> b <= a
+      p = make_ast_op(AST_OP_LE, right, left, tk);
     return relational_expr_tail(p);
   } else {
     return left;
@@ -569,8 +565,6 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_DIV:
     case AST_OP_LT:
     case AST_OP_LE:
-    case AST_OP_GT:
-    case AST_OP_GE:
     case AST_OP_EQUAL:
     case AST_OP_NEQUAL:
       semantic_analysis(p->left);
@@ -787,8 +781,6 @@ static void codegen(Ast *p) {
       break;
     case AST_OP_LT:
     case AST_OP_LE:
-    case AST_OP_GT:
-    case AST_OP_GE:
     case AST_OP_EQUAL:
     case AST_OP_NEQUAL:
       codegen(p->left);
@@ -801,10 +793,6 @@ static void codegen(Ast *p) {
         s = allocate_string("setl");
       else if (p->type == AST_OP_LE)
         s = allocate_string("setle");
-      else if (p->type == AST_OP_GT)
-        s = allocate_string("setg");
-      else if (p->type == AST_OP_GE)
-        s = allocate_string("setge");
       else if (p->type == AST_OP_EQUAL)
         s = allocate_string("sete");
       else
