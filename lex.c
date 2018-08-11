@@ -140,6 +140,12 @@ void init_token_queue(FILE *fp) {
     else if (c == '}')
       vector_push_back(v, (void *)make_token(now_row, now_col, TK_RCUR,
                                              allocate_string("}")));
+    else if (c == '[')
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LBRA,
+                                             allocate_string("[")));
+    else if (c == ']')
+      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RBRA,
+                                             allocate_string("]")));
     else if (c == '<') {
       if ((c = getc(fp)) == '=') {
         now_col++;

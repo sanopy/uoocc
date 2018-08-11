@@ -122,6 +122,13 @@ runtest 'int main() {int a; int b; a = 1; b = 2; a + b; }' 3
 runtest 'int main() {int a; int b; int c; a = b = c = 1; a + b + c; }' 3
 runtest 'int main() {int a; int b; int c; a = 5; b = a + 6; c = b * 2; a * 2 + b + c; }' 43
 
+echo "=== array ==="
+runtest 'int main() {int a[2]; *a = 1; *a; }' 1
+runtest 'int main() {int a[2]; *(a + 1) = 2; *(a + 1); }' 2
+runtest 'int main() {int a[2][2]; **a = 3; **a; }' 3
+runtest 'int main() {int a[2][2]; *(*(a + 0) + 1) = 4; *(*(a + 0) + 1); }' 4
+runtest 'int main() {int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; *p + *(p + 1); }' 3
+
 echo "=== function ==="
 printtest 'int main() { print_hello(); }' 'hello'
 runtest 'int main() { return_seven(); }' 7

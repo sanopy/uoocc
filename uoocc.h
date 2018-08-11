@@ -50,6 +50,8 @@ enum {
   TK_COMMA,   // ,
   TK_LCUR,    // {
   TK_RCUR,    // }
+  TK_LBRA,    // [
+  TK_RBRA,    // ]
   TK_INC,     // ++
   TK_DEC,     // --
   TK_LT,      // <

@@ -32,11 +32,13 @@ enum {
 enum {
   TYPE_INT,
   TYPE_PTR,
+  TYPE_ARRAY,
 };
 
 typedef struct _CType {
   int type;
   struct _CType *ptrof;
+  int array_size;
 } CType;
 
 typedef struct {
@@ -145,15 +147,27 @@ static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int offset) {
   return p;
 }
 
+int sizeof_ctype(CType *ctype) {
+  if (ctype->type == TYPE_INT)
+    return 4;
+  else if (ctype->type == TYPE_PTR)
+    return 8;
+  else if (ctype->type == TYPE_ARRAY) {
+    return sizeof_ctype(ctype->ptrof) * ctype->array_size;
+  } else
+    return 0;
+}
+
 int offset_from_bp;
-static int get_offset_from_bp(int type) {
-  if (type == TYPE_INT)
+static int get_offset_from_bp(CType *ctype) {
+  int stack_size = sizeof_ctype(ctype);
+  if (stack_size == 4)
     offset_from_bp += 4;
-  else if (type == TYPE_PTR) {
+  else if (stack_size >= 8) {
     if (offset_from_bp % 8 == 0)
-      offset_from_bp += 8;
+      offset_from_bp += stack_size;
     else
-      offset_from_bp += 8 - offset_from_bp % 8 + 8;
+      offset_from_bp += 8 - offset_from_bp % 8 + stack_size;
   }
   return offset_from_bp;
 }
@@ -374,20 +388,50 @@ static Ast *expr(void) {
   }
 }
 
-// <declaration> = 'int' { '*' } <ident> ';'
+// <pointer> = '*' | '*' <pointer>
+static CType *pointer(CType *ctype) {
+  // current token is '*' when enter this function.
+  ctype = make_ctype(TYPE_PTR, ctype);
+  if (next_token()->type == TK_STAR)
+    return pointer(ctype);
+  else
+    return ctype;
+}
+
+// <direct_declarator_tail> = ε | '[' <number> ']' <direct_declarator_tail>
+static CType *direct_declarator_tail(CType *ctype) {
+  if (current_token()->type == TK_LBRA) {
+    ctype = make_ctype(TYPE_ARRAY, ctype);
+    expect_token(next_token(), TK_NUM);
+    ctype->array_size = current_token()->number;
+    expect_token(next_token(), TK_RBRA);
+    next_token();
+    return direct_declarator_tail(ctype);
+  } else
+    return ctype;
+}
+
+// <direct_declarator> = <ident> <direct_declarator_tail>
+static Ast *direct_declarator(CType *ctype) {
+  expect_token(current_token(), TK_IDENT);
+  Token *tk = current_token();
+  next_token();
+  return make_ast_declaration(direct_declarator_tail(ctype), tk->text, tk);
+}
+
+// <declaration> = 'int' <pointer_opt> <direct_declarator> ';'
 static Ast *declaration(void) {
   // current token is 'int' when enter this function.
   CType *ctype = make_ctype(TYPE_INT, NULL);
 
-  while (next_token()->type == TK_STAR)
-    ctype = make_ctype(TYPE_PTR, ctype);
+  if (next_token()->type == TK_STAR)
+    ctype = pointer(ctype);
 
-  expect_token(current_token(), TK_IDENT);
+  Ast *p = direct_declarator(ctype);
 
-  Token *tk = current_token();
-  Ast *p = make_ast_declaration(ctype, tk->text, tk);
-  expect_token(next_token(), TK_SEMI);
+  expect_token(current_token(), TK_SEMI);
   next_token();
+
   return p;
 }
 
@@ -536,6 +580,17 @@ static Vector *program(void) {
   return v;
 }
 
+static Ast *array_to_ptr(Ast *p) {
+  CType *ctype = p->ctype;
+  if (ctype->type == TYPE_ARRAY) {
+    Ast *new = make_ast_op(AST_OP_REF, p, NULL, NULL);
+    new->ctype = make_ctype(TYPE_PTR, ctype->ptrof);
+    return new;
+  } else {
+    return p;
+  }
+}
+
 static void semantic_analysis(Ast *p) {
   if (p == NULL)
     return;
@@ -544,6 +599,10 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_ADD:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
+
+      p->left = array_to_ptr(p->left);
+      p->right = array_to_ptr(p->right);
+
       if (p->left->ctype->type == TYPE_PTR && p->right->ctype->type == TYPE_PTR)
         error_with_token(p->token, "invalid operands to binary expression");
       else if (p->right->ctype->type == TYPE_PTR)
@@ -554,6 +613,10 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_SUB:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
+
+      p->left = array_to_ptr(p->left);
+      p->right = array_to_ptr(p->right);
+
       if (p->left->ctype->type == TYPE_PTR && p->right->ctype->type == TYPE_PTR)
         p->ctype = make_ctype(TYPE_INT, NULL);
       else if (p->right->ctype->type == TYPE_PTR)
@@ -578,6 +641,7 @@ static void semantic_analysis(Ast *p) {
       if (p->left == NULL || p->left->type != AST_VAR)
         error_with_token(p->token, "expression is not assignable");
       semantic_analysis(p->left);
+      p->left = array_to_ptr(p->left);
       p->ctype = p->left->ctype;
       break;
     case AST_OP_REF:
@@ -586,6 +650,7 @@ static void semantic_analysis(Ast *p) {
       break;
     case AST_OP_DEREF:
       semantic_analysis(p->left);
+      p->left = array_to_ptr(p->left);
       if (p->left->ctype->type != TYPE_PTR || p->left->ctype->ptrof == NULL)
         error_with_token(p->token, "indirection requires pointer operand");
       p->ctype = p->left->ctype->ptrof;
@@ -593,6 +658,8 @@ static void semantic_analysis(Ast *p) {
     case AST_OP_ASSIGN:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
+      p->left = array_to_ptr(p->left);
+      p->right = array_to_ptr(p->right);
       if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF)
         error_with_token(p->token, "expression is not assignable");
       else if (p->left->ctype->type != p->right->ctype->type)
@@ -610,7 +677,7 @@ static void semantic_analysis(Ast *p) {
       break;
     case AST_DECLARATION: {
       SymbolTableEntry *_e =
-          make_SymbolTableEntry(p->ctype, get_offset_from_bp(p->ctype->type));
+          make_SymbolTableEntry(p->ctype, get_offset_from_bp(p->ctype));
       MapEntry *e = allocate_MapEntry(p->ident, (void *)_e);
       if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
         error_with_token(p->token, allocate_concat_3string("redifinition of '",
