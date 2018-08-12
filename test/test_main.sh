@@ -128,6 +128,11 @@ runtest 'int main() {int a[2]; *(a + 1) = 2; *(a + 1); }' 2
 runtest 'int main() {int a[2][2]; **a = 3; **a; }' 3
 runtest 'int main() {int a[2][2]; *(*(a + 0) + 1) = 4; *(*(a + 0) + 1); }' 4
 runtest 'int main() {int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; *p + *(p + 1); }' 3
+runtest 'int main() {int a[2]; a[0] = 1; a[0]; }' 1
+runtest 'int main() {int a[2]; a[1] = 2; a[1]; }' 2
+runtest 'int main() {int a[2]; a[0] = 1; a[1] = 2; a[0] + a[1]; }' 3
+runtest 'int main() {int a[2][2]; a[0][0] = 1; a[0][1] = 2; a[1][0] = 3; a[0][0] + a[0][1] * a[1][0]; }' 7
+runtest 'int main() {int a[2]; a[1] = 5; 1[a]; }' 5
 
 echo "=== function ==="
 printtest 'int main() { print_hello(); }' 'hello'

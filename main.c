@@ -221,17 +221,27 @@ static Ast *primary_expr(void) {
 
 /*
   <postfix_expr> = <primary_expr> <postfix_expr_tail>
-  <postfix_expr_tail> = ε | '++' <postfix_expr_tail> | '--' <postfix_expr_tail>
+  <postfix_expr_tail> = ε |
+    '++' <postfix_expr_tail> |
+    '--' <postfix_expr_tail> |
+    '[' <expr> ']' <postfix_expr_tail>
 */
 static Ast *postfix_expr_tail(Ast *left) {
-  int type = current_token()->type;
+  Token *tk = current_token();
+  int type = tk->type;
   if (type == TK_INC || type == TK_DEC) {
-    Token *tk = current_token();
     next_token();
     Ast *right = postfix_expr_tail(NULL);
     int ast_op = type == TK_INC ? AST_OP_POST_INC : AST_OP_POST_DEC;
     Ast *p = make_ast_op(ast_op, left, right, tk);
     return postfix_expr_tail(p);
+  } else if (type == TK_LBRA) {
+    next_token();
+    Ast *add = make_ast_op(AST_OP_ADD, left, expr(), tk);
+    Ast *deref = make_ast_op(AST_OP_DEREF, add, NULL, tk);
+    expect_token(current_token(), TK_RBRA);
+    next_token();
+    return postfix_expr_tail(deref);
   } else {
     return left;
   }
