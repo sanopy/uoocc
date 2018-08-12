@@ -96,3 +96,77 @@ void error(char *);
 void error_with_token(Token *, char *);
 void expect_token(Token *, int);
 int get_sequence_num(void);
+
+// parse.c
+enum {
+  AST_INT,
+  AST_OP_ADD,
+  AST_OP_SUB,
+  AST_OP_MUL,
+  AST_OP_DIV,
+  AST_OP_POST_INC,
+  AST_OP_POST_DEC,
+  AST_OP_PRE_INC,
+  AST_OP_PRE_DEC,
+  AST_OP_REF,
+  AST_OP_DEREF,
+  AST_OP_LT,
+  AST_OP_LE,
+  AST_OP_EQUAL,
+  AST_OP_NEQUAL,
+  AST_OP_ASSIGN,
+  AST_VAR,
+  AST_DECLARATION,
+  AST_CALL_FUNC,
+  AST_DECL_FUNC,
+  AST_COMPOUND_STATEMENT,
+  AST_IF_STATEMENT,
+  AST_WHILE_STATEMENT,
+  AST_FOR_STATEMENT,
+};
+
+enum {
+  TYPE_INT,
+  TYPE_PTR,
+  TYPE_ARRAY,
+};
+
+typedef struct _CType {
+  int type;
+  struct _CType *ptrof;
+  int array_size;
+} CType;
+
+typedef struct {
+  CType *ctype;
+  int offset;
+} SymbolTableEntry;
+
+typedef struct _Ast {
+  int type;
+  CType *ctype;
+  int ival;
+  char *ident;
+  Vector *args;
+  Vector *statements;
+  Map *symbol_table;
+  int offset_from_bp;
+  Token *token;
+  struct _Ast *left;
+  struct _Ast *right;
+  struct _Ast *cond;
+  struct _Ast *init;
+  struct _Ast *step;
+  struct _Ast *statement;
+} Ast;
+
+CType *make_ctype(int, CType *);
+Ast *make_ast_op(int, Ast *, Ast *, Token *);
+Ast *make_ast_int(int);
+Vector *program(void);
+
+// analyze.c
+void semantic_analysis(Ast *);
+
+// gen.c
+void codegen(Ast *);

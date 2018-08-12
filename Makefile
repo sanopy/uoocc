@@ -1,7 +1,7 @@
 CC = gcc
 TARGET = cc.out
 CFLAGS = -std=c11 -Wall
-SRCS = main.c vector.c map.c mylib.c lex.c
+SRCS = main.c vector.c map.c mylib.c lex.c parse.c analyze.c gen.c
 OBJS := $(SRCS:.c=.o)
 
 $(TARGET): $(OBJS)
