@@ -311,33 +311,7 @@ static CType *pointer(CType *ctype) {
     return ctype;
 }
 
-static Ast *compound_statement(void);
-
-// <decl_function> =
-//   '(' [ 'int' { '*' } <ident> { ',' 'int' { '*' } <ident> } ] ')'
-static Ast *decl_function(Token *tk) {
-  // current token is '(' when enter this function.
-  Ast *p = make_ast_decl_func(tk->text, tk);
-
-  if (second_token()->type != TK_RPAR) {
-    do {
-      expect_token(next_token(), TK_INT);
-      CType *ctype = make_ctype(TYPE_INT, NULL);
-
-      while (next_token()->type == TK_STAR)
-        ctype = make_ctype(TYPE_PTR, ctype);
-
-      expect_token(current_token(), TK_IDENT);
-      vector_push_back(p->args, make_ast_decl_var(ctype, current_token()->text,
-                                                  current_token()));
-    } while (next_token()->type == TK_COMMA);
-    expect_token(current_token(), TK_RPAR);
-  } else
-    next_token();
-
-  next_token();
-  return p;
-}
+static Ast *decl_function(Token *);
 
 // <direct_declarator_tail> = ε | '[' <number> ']' <direct_declarator_tail> |
 //   <decl_function>
@@ -370,16 +344,62 @@ static Ast *declarator(CType *ctype) {
   return direct_declarator(ctype);
 }
 
-// <declaration> = 'int' <declarator> ';'
-static Ast *declaration(void) {
-  // current token is 'int' when enter this function.
-  next_token();
+static int is_declaration_specifiers() {
+  int t = current_token()->type;
+  return t == TK_INT || t == TK_CHAR;
+}
 
-  Ast *p = declarator(make_ctype(TYPE_INT, NULL));
+// <declaration_specifiers> = 'int' | 'char'
+static CType *declaration_specifiers() {
+  // current token is 'int' or 'char' when enter this function.
+  CType *ret;
+  if (current_token()->type == TK_INT)
+    ret = make_ctype(TYPE_INT, NULL);
+  else
+    ret = make_ctype(TYPE_CHAR, NULL);
+
+  next_token();
+  return ret;
+}
+
+// <declaration> = <declaration_specifiers> <declarator> ';'
+static Ast *declaration(void) {
+  // current token is 'int' or 'char' when enter this function.
+  Ast *p = declarator(declaration_specifiers());
 
   expect_token(current_token(), TK_SEMI);
   next_token();
 
+  return p;
+}
+
+// <decl_function> =
+//   '(' [ <declaration_specifiers> <pointer_opt> <ident>
+//   { ',' <declaration_specifiers> <pointer_opt> <ident> } ] ')'
+static Ast *decl_function(Token *tk) {
+  // current token is '(' when enter this function.
+  Ast *p = make_ast_decl_func(tk->text, tk);
+
+  if (second_token()->type != TK_RPAR) {
+    do {
+      next_token();
+      if (!is_declaration_specifiers())
+        error_with_token(current_token(),
+                         "declaration_specifiers was expected");
+      CType *ctype = declaration_specifiers();
+
+      if (current_token()->type == TK_STAR)
+        ctype = pointer(ctype);
+
+      expect_token(current_token(), TK_IDENT);
+      vector_push_back(p->args, make_ast_decl_var(ctype, current_token()->text,
+                                                  current_token()));
+    } while (next_token()->type == TK_COMMA);
+    expect_token(current_token(), TK_RPAR);
+  } else
+    next_token();
+
+  next_token();
   return p;
 }
 
@@ -451,7 +471,7 @@ static Ast *compound_statement(void) {
 
   next_token();
   while (current_token()->type != TK_RCUR) {
-    if (current_token()->type == TK_INT)
+    if (is_declaration_specifiers())
       vector_push_back(p->statements, declaration());
     else
       vector_push_back(p->statements, statement());
@@ -481,15 +501,15 @@ static Ast *statement(void) {
     return expr_statement();
 }
 
-// <program> = { 'int' <declarator> ';' |
-//   'int' <declarator> <compound_statement> }
+// <program> = { <declaration_specifiers> <declarator> ';' |
+//   <declaration_specifiers> <declarator> <compound_statement> }
 Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    expect_token(current_token(), TK_INT);
-    next_token();
-    Ast *p = declarator(make_ctype(TYPE_INT, NULL));
+    if (!is_declaration_specifiers())
+      error_with_token(current_token(), "declaration_specifiers was expected");
+    Ast *p = declarator(declaration_specifiers());
     if (p->type == AST_DECL_LOCAL_VAR) {
       p->type = AST_DECL_GLOBAL_VAR;
       expect_token(current_token(), TK_SEMI);

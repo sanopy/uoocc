@@ -66,6 +66,7 @@ enum {
   TK_WHILE,   // while
   TK_FOR,     // for
   TK_INT,     // int
+  TK_CHAR,    // char
 };
 
 typedef struct {
@@ -129,6 +130,7 @@ enum {
 
 enum {
   TYPE_INT,
+  TYPE_CHAR,
   TYPE_PTR,
   TYPE_ARRAY,
 };
@@ -171,7 +173,6 @@ Ast *make_ast_int(int);
 Vector *program(void);
 
 // analyze.c
-SymbolTableEntry *symboltable_get(Map *, char *);
 void semantic_analysis(Ast *);
 int sizeof_ctype(CType *);
 

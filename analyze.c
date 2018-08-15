@@ -1,16 +1,17 @@
+#include <assert.h>
 #include <stdlib.h>
 #include "uoocc.h"
 
 Map *symbol_table;
 
-SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int is_global) {
+static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int is_global) {
   SymbolTableEntry *p = (SymbolTableEntry *)malloc(sizeof(SymbolTableEntry));
   p->ctype = ctype;
   p->is_global = is_global;
   return p;
 }
 
-SymbolTableEntry *symboltable_get(Map *table, char *key) {
+static SymbolTableEntry *symboltable_get(Map *table, char *key) {
   MapEntry *e = map_get(table, key);
   if (e == NULL) {
     if (table->next == NULL)
@@ -25,25 +26,32 @@ SymbolTableEntry *symboltable_get(Map *table, char *key) {
 int sizeof_ctype(CType *ctype) {
   if (ctype->type == TYPE_INT)
     return 4;
+  else if (ctype->type == TYPE_CHAR)
+    return 1;
   else if (ctype->type == TYPE_PTR)
     return 8;
   else if (ctype->type == TYPE_ARRAY) {
     return sizeof_ctype(ctype->ptrof) * ctype->array_size;
   } else
-    return 0;
+    assert(0);
 }
 
 int offset_from_bp;
 static int get_offset_from_bp(CType *ctype) {
   int stack_size = sizeof_ctype(ctype);
-  if (stack_size == 4)
-    offset_from_bp += 4;
-  else if (stack_size >= 8) {
-    if (offset_from_bp % 8 == 0)
-      offset_from_bp += stack_size;
-    else
-      offset_from_bp += 8 - offset_from_bp % 8 + stack_size;
-  }
+  if (stack_size == 1)
+    offset_from_bp += 1;
+  else if (stack_size <= 4 && offset_from_bp % 4 == 0)
+    offset_from_bp += stack_size;
+  else if (stack_size <= 4 &&
+           offset_from_bp / 4 == (offset_from_bp + stack_size) / 4)
+    offset_from_bp += stack_size;
+  else if (stack_size <= 4)
+    offset_from_bp += 4 - (offset_from_bp % 4) + stack_size;
+  else if (offset_from_bp % 8 == 0)
+    offset_from_bp += stack_size;
+  else
+    offset_from_bp += 8 - (offset_from_bp % 8) + stack_size;
   return offset_from_bp;
 }
 
@@ -56,6 +64,13 @@ static Ast *array_to_ptr(Ast *p) {
   } else {
     return p;
   }
+}
+
+static CType *char_to_int(CType *ctype) {
+  if (ctype->type == TYPE_CHAR)
+    return make_ctype(TYPE_INT, NULL);
+  else
+    return ctype;
 }
 
 void semantic_analysis(Ast *p) {
@@ -75,7 +90,7 @@ void semantic_analysis(Ast *p) {
       else if (p->right->ctype->type == TYPE_PTR)
         p->ctype = p->right->ctype;
       else
-        p->ctype = p->left->ctype;
+        p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_SUB:
       semantic_analysis(p->left);
@@ -89,7 +104,7 @@ void semantic_analysis(Ast *p) {
       else if (p->right->ctype->type == TYPE_PTR)
         p->ctype = p->right->ctype;
       else
-        p->ctype = p->left->ctype;
+        p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_MUL:
     case AST_OP_DIV:
@@ -99,7 +114,7 @@ void semantic_analysis(Ast *p) {
     case AST_OP_NEQUAL:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
-      p->ctype = p->left->ctype;
+      p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_POST_INC:
     case AST_OP_POST_DEC:
@@ -127,7 +142,10 @@ void semantic_analysis(Ast *p) {
       semantic_analysis(p->right);
       p->left = array_to_ptr(p->left);
       p->right = array_to_ptr(p->right);
-      if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF)
+      if (p->left->ctype->type == TYPE_CHAR &&
+          p->right->ctype->type == TYPE_INT)
+        ;
+      else if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF)
         error_with_token(p->token, "expression is not assignable");
       else if (p->left->ctype->type != p->right->ctype->type)
         error_with_token(p->token, "expression is not assignable");

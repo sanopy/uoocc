@@ -28,8 +28,9 @@ static void emit_expr(Ast *p) {
       codegen(p->right);
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
-      if (ltype->type == TYPE_INT && rtype->type == TYPE_INT)
-        printf("\t%s %%edx, %%eax\n", p->type == AST_OP_ADD ? "addl" : "subl");
+      if ((ltype->type == TYPE_INT || ltype->type == TYPE_CHAR) &&
+          (rtype->type == TYPE_INT || rtype->type == TYPE_CHAR))
+        printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
       else if (ltype->type == TYPE_PTR && rtype->type == TYPE_PTR) {
         printf("\tsubq %%rdx, %%rax\n");
         printf("\tsarq $%d, %%rax\n", ltype->ptrof->type == TYPE_INT ? 2 : 3);
@@ -63,7 +64,9 @@ static void emit_expr(Ast *p) {
       printf("\tpopq %%rax\n");
       if (p->left->ctype->type == TYPE_PTR)
         printf("\tmovq %%rdi, (%%rax)\n");
-      else
+      else if (p->left->ctype->type == TYPE_CHAR) {
+        printf("\tmovb %%dil, (%%rax)\n");
+      } else
         printf("\tmovl %%edi, (%%rax)\n");
       printf("\tpushq %%rdi\n");
       break;
@@ -154,7 +157,11 @@ void codegen(Ast *p) {
       if (p->symbol_table_entry->is_global) {
         printf("\tpushq %s(%%rip)\n", p->symbol_table_entry->ident);
       } else {
-        printf("\tpushq %d(%%rbp)\n", -p->symbol_table_entry->offset);
+        if (p->ctype->type == TYPE_CHAR) {
+          printf("\tmovzbl %d(%%rbp), %%eax\n", -p->symbol_table_entry->offset);
+          printf("\tpushq %%rax\n");
+        } else
+          printf("\tpushq %d(%%rbp)\n", -p->symbol_table_entry->offset);
       }
       break;
     case AST_DECL_GLOBAL_VAR:

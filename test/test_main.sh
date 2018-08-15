@@ -126,6 +126,11 @@ echo " - global"
 runtest 'int x; int main() { x = 1; x; }' 1
 runtest 'int x; int inc() { ++x; } int main() { x = 2; inc(); x; }' 3
 runtest 'int a[20]; int test() { a[5] = 5; } int main() { test(); a[5]; }' 5
+echo " - char"
+runtest 'int main() { char x; x = 1; x; }' 1
+runtest 'int main() { char x; char y; x = 1; y = 2; y; }' 2
+runtest 'int main() { char x; char y; x = 1; y = 3; x = y; x; }' 3
+runtest 'int main() { char x[3]; x[0] = 1; int y; y = 4; x[0] + y; }'  5
 
 echo "=== array ==="
 runtest 'int main() {int a[2]; *a = 1; *a; }' 1
@@ -212,10 +217,10 @@ runtest 'int main() {
 }' 55
 
 echo "=== fail test ==="
-failtest '1;' "'int' was expected."
+failtest '1;' "declaration_specifiers was expected."
 failtest 'int () {}' "ident was expected."
-# failtest 'int main) {}' "'(' was expected."
-failtest 'int main( {}' "'int' was expected."
+failtest 'int main) {}' "';' was expected."
+failtest 'int main( {}' "declaration_specifiers was expected."
 failtest 'int main() }' "'{' was expected."
 failtest 'int main() {' "primary-expression was expected."
 failtest 'int main() { 1 }' "';' was expected."
@@ -236,7 +241,7 @@ failtest 'int main() { int *p; p = 1; }' "expression is not assignable."
 failtest 'int main() { int a; int *p; p = a; }' "expression is not assignable."
 failtest 'int main() { int *p; **p; }' "indirection requires pointer operand."
 failtest 'int main() { *1; }' "indirection requires pointer operand."
-failtest 'int f(x) {}' "'int' was expected."
+failtest 'int f(x) {}' "declaration_specifiers was expected."
 failtest 'int main(int 1) {}' "ident was expected."
 failtest 'int f(int x, int x) {}' "redifinition of 'x'."
 failtest 'int f(int a, int b, int c, int d, int e, int f, int g) {}' "too many arguments."
