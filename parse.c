@@ -33,9 +33,9 @@ static Ast *make_ast_var(char *ident, Token *token) {
   return p;
 }
 
-static Ast *make_ast_declaration(CType *ctype, char *ident, Token *token) {
+static Ast *make_ast_decl_var(CType *ctype, char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
-  p->type = AST_DECLARATION;
+  p->type = AST_DECL_LOCAL_VAR;
   p->ctype = ctype;
   p->ident = ident;
   p->token = token;
@@ -57,7 +57,8 @@ static Ast *make_ast_decl_func(char *ident, Token *token) {
   p->ident = ident;
   p->token = token;
   p->args = vector_new();
-  p->symbol_table = map_new();
+  p->symbol_table =
+      map_new(symbol_table);  // TODO: it is never express local scope.
   return p;
 }
 
@@ -310,17 +311,48 @@ static CType *pointer(CType *ctype) {
     return ctype;
 }
 
-// <direct_declarator_tail> = ε | '[' <number> ']' <direct_declarator_tail>
-static CType *direct_declarator_tail(CType *ctype) {
+static Ast *compound_statement(void);
+
+// <decl_function> =
+//   '(' [ 'int' { '*' } <ident> { ',' 'int' { '*' } <ident> } ] ')'
+static Ast *decl_function(Token *tk) {
+  // current token is '(' when enter this function.
+  Ast *p = make_ast_decl_func(tk->text, tk);
+
+  if (second_token()->type != TK_RPAR) {
+    do {
+      expect_token(next_token(), TK_INT);
+      CType *ctype = make_ctype(TYPE_INT, NULL);
+
+      while (next_token()->type == TK_STAR)
+        ctype = make_ctype(TYPE_PTR, ctype);
+
+      expect_token(current_token(), TK_IDENT);
+      vector_push_back(p->args, make_ast_decl_var(ctype, current_token()->text,
+                                                  current_token()));
+    } while (next_token()->type == TK_COMMA);
+    expect_token(current_token(), TK_RPAR);
+  } else
+    next_token();
+
+  next_token();
+  return p;
+}
+
+// <direct_declarator_tail> = ε | '[' <number> ']' <direct_declarator_tail> |
+//   <decl_function>
+static Ast *direct_declarator_tail(Token *ident, CType *ctype) {
   if (current_token()->type == TK_LBRA) {
     ctype = make_ctype(TYPE_ARRAY, ctype);
     expect_token(next_token(), TK_NUM);
     ctype->array_size = current_token()->number;
     expect_token(next_token(), TK_RBRA);
     next_token();
-    return direct_declarator_tail(ctype);
+    return direct_declarator_tail(ident, ctype);
+  } else if (current_token()->type == TK_LPAR) {
+    return decl_function(ident);
   } else
-    return ctype;
+    return make_ast_decl_var(ctype, ident->text, ident);
 }
 
 // <direct_declarator> = <ident> <direct_declarator_tail>
@@ -328,18 +360,22 @@ static Ast *direct_declarator(CType *ctype) {
   expect_token(current_token(), TK_IDENT);
   Token *tk = current_token();
   next_token();
-  return make_ast_declaration(direct_declarator_tail(ctype), tk->text, tk);
+  return direct_declarator_tail(tk, ctype);
 }
 
-// <declaration> = 'int' <pointer_opt> <direct_declarator> ';'
+// <declarator> = <pointer_opt> <direct_declarator>
+static Ast *declarator(CType *ctype) {
+  if (current_token()->type == TK_STAR)
+    ctype = pointer(ctype);
+  return direct_declarator(ctype);
+}
+
+// <declaration> = 'int' <declarator> ';'
 static Ast *declaration(void) {
   // current token is 'int' when enter this function.
-  CType *ctype = make_ctype(TYPE_INT, NULL);
+  next_token();
 
-  if (next_token()->type == TK_STAR)
-    ctype = pointer(ctype);
-
-  Ast *p = direct_declarator(ctype);
+  Ast *p = declarator(make_ctype(TYPE_INT, NULL));
 
   expect_token(current_token(), TK_SEMI);
   next_token();
@@ -445,47 +481,25 @@ static Ast *statement(void) {
     return expr_statement();
 }
 
-// <decl_function> = 'int' <ident>
-//   '(' [ 'int' { '*' } <ident> { ',' 'int' { '*' } <ident> } ] ')'
-//   <compound_statement>
-static Ast *decl_function(void) {
-  // current token is 'int' when enter this function.
-  Token *tk = next_token();
-  expect_token(tk, TK_IDENT);
-
-  Ast *p = make_ast_decl_func(tk->text, tk);
-  expect_token(next_token(), TK_LPAR);
-
-  if (second_token()->type != TK_RPAR) {
-    do {
-      expect_token(next_token(), TK_INT);
-      CType *ctype = make_ctype(TYPE_INT, NULL);
-
-      while (next_token()->type == TK_STAR)
-        ctype = make_ctype(TYPE_PTR, ctype);
-
-      expect_token(current_token(), TK_IDENT);
-      vector_push_back(
-          p->args,
-          make_ast_declaration(ctype, current_token()->text, current_token()));
-    } while (next_token()->type == TK_COMMA);
-    expect_token(current_token(), TK_RPAR);
-  } else
-    next_token();
-
-  expect_token(next_token(), TK_LCUR);
-  p->statement = compound_statement();
-
-  return p;
-}
-
-// <program> = { <decl_function> }
+// <program> = { 'int' <declarator> ';' |
+//   'int' <declarator> <compound_statement> }
 Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
     expect_token(current_token(), TK_INT);
-    Ast *p = decl_function();
+    next_token();
+    Ast *p = declarator(make_ctype(TYPE_INT, NULL));
+    if (p->type == AST_DECL_LOCAL_VAR) {
+      p->type = AST_DECL_GLOBAL_VAR;
+      expect_token(current_token(), TK_SEMI);
+      next_token();
+    } else if (p->type == AST_DECL_FUNC) {
+      expect_token(current_token(), TK_LCUR);
+      p->statement = compound_statement();
+    } else {
+      error("declaration for variable or function was expected");
+    }
     vector_push_back(v, p);
   }
 

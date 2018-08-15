@@ -19,15 +19,16 @@ typedef struct {
   void *val;
 } MapEntry;
 
-typedef struct {
+typedef struct _Map {
   Vector *vec;
   int size;
+  struct _Map *next;
 } Map;
 
 extern Map *symbol_table;
 
 MapEntry *allocate_MapEntry(char *, void *);
-Map *map_new(void);
+Map *map_new(Map *);
 int map_put(Map *, MapEntry *);
 MapEntry *map_get(Map *, char *);
 
@@ -116,7 +117,8 @@ enum {
   AST_OP_NEQUAL,
   AST_OP_ASSIGN,
   AST_VAR,
-  AST_DECLARATION,
+  AST_DECL_LOCAL_VAR,
+  AST_DECL_GLOBAL_VAR,
   AST_CALL_FUNC,
   AST_DECL_FUNC,
   AST_COMPOUND_STATEMENT,
@@ -140,6 +142,8 @@ typedef struct _CType {
 typedef struct {
   CType *ctype;
   int offset;
+  int is_global;
+  char *ident;
 } SymbolTableEntry;
 
 typedef struct _Ast {
@@ -152,6 +156,7 @@ typedef struct _Ast {
   Map *symbol_table;
   int offset_from_bp;
   Token *token;
+  SymbolTableEntry *symbol_table_entry;
   struct _Ast *left;
   struct _Ast *right;
   struct _Ast *cond;
@@ -166,7 +171,9 @@ Ast *make_ast_int(int);
 Vector *program(void);
 
 // analyze.c
+SymbolTableEntry *symboltable_get(Map *, char *);
 void semantic_analysis(Ast *);
+int sizeof_ctype(CType *);
 
 // gen.c
 void codegen(Ast *);

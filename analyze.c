@@ -3,14 +3,26 @@
 
 Map *symbol_table;
 
-static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int offset) {
+SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int is_global) {
   SymbolTableEntry *p = (SymbolTableEntry *)malloc(sizeof(SymbolTableEntry));
   p->ctype = ctype;
-  p->offset = offset;
+  p->is_global = is_global;
   return p;
 }
 
-static int sizeof_ctype(CType *ctype) {
+SymbolTableEntry *symboltable_get(Map *table, char *key) {
+  MapEntry *e = map_get(table, key);
+  if (e == NULL) {
+    if (table->next == NULL)
+      return NULL;
+    else
+      return symboltable_get(table->next, key);
+  } else {
+    return e->val;
+  }
+}
+
+int sizeof_ctype(CType *ctype) {
   if (ctype->type == TYPE_INT)
     return 4;
   else if (ctype->type == TYPE_PTR)
@@ -122,21 +134,31 @@ void semantic_analysis(Ast *p) {
       p->ctype = p->left->ctype;
       break;
     case AST_VAR:
-      if (map_get(symbol_table, p->ident) == NULL)  // undefined variable.
+      if (symboltable_get(symbol_table, p->ident) ==
+          NULL)  // undefined variable.
         error_with_token(
             p->token, allocate_concat_3string("use of undeclared identifier '",
                                               p->ident, "'"));
-      else
-        p->ctype =
-            ((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->ctype;
+      else {
+        p->symbol_table_entry = symboltable_get(symbol_table, p->ident);
+        p->ctype = p->symbol_table_entry->ctype;
+      }
       break;
-    case AST_DECLARATION: {
-      SymbolTableEntry *_e =
-          make_SymbolTableEntry(p->ctype, get_offset_from_bp(p->ctype));
+    case AST_DECL_LOCAL_VAR: {
+      SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 0);
+      _e->offset = get_offset_from_bp(p->ctype);
       MapEntry *e = allocate_MapEntry(p->ident, _e);
       if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
         error_with_token(p->token, allocate_concat_3string("redifinition of '",
                                                            p->ident, "'"));
+      map_put(symbol_table, e);
+      break;
+    }
+    case AST_DECL_GLOBAL_VAR: {
+      SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 1);
+      _e->ident = p->ident;
+      MapEntry *e = allocate_MapEntry(p->ident, _e);
+      // TODO: check already defined variable.
       map_put(symbol_table, e);
       break;
     }

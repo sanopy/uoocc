@@ -2,6 +2,7 @@
 
 int main(void) {
   init_token_queue(stdin);
+  symbol_table = map_new(NULL);
   Vector *v = program();
 
   for (int i = 0; i < v->size; i++)

@@ -24,7 +24,7 @@ void test_vector(void) {
 
 void test_map(void) {
   MapEntry *e;
-  Map *m = map_new();
+  Map *m = map_new(NULL);
 
   assert(m != NULL);
 

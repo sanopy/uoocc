@@ -4,9 +4,13 @@ static void emit_lvalue(Ast *p) {
   if (p->type == AST_OP_DEREF) {
     codegen(p->left);
   } else if (p->type == AST_VAR) {
-    printf("\tleaq %d(%%rbp), %%rax\n",
-           -((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->offset);
-    printf("\tpushq %%rax\n");
+    if (p->symbol_table_entry->is_global) {
+      printf("\tleaq %s(%%rip), %%rax\n", p->ident);
+      printf("\tpushq %%rax\n");
+    } else {
+      printf("\tleaq %d(%%rbp), %%rax\n", -p->symbol_table_entry->offset);
+      printf("\tpushq %%rax\n");
+    }
   }
 }
 
@@ -147,9 +151,16 @@ void codegen(Ast *p) {
       printf("\tpushq %%rax\n");
       break;
     case AST_VAR:
-      printf(
-          "\tpushq %d(%%rbp)\n",
-          -((SymbolTableEntry *)map_get(symbol_table, p->ident)->val)->offset);
+      if (p->symbol_table_entry->is_global) {
+        printf("\tpushq %s(%%rip)\n", p->symbol_table_entry->ident);
+      } else {
+        printf("\tpushq %d(%%rbp)\n", -p->symbol_table_entry->offset);
+      }
+      break;
+    case AST_DECL_GLOBAL_VAR:
+      printf(".data\n");
+      printf("%s:\n", p->ident);
+      printf("\t.zero %d\n", sizeof_ctype(p->ctype));
       break;
     case AST_CALL_FUNC:
       for (int i = p->args->size - 1; i >= 0; i--)
@@ -164,6 +175,7 @@ void codegen(Ast *p) {
       break;
     case AST_DECL_FUNC:
       symbol_table = p->symbol_table;
+      printf(".text\n");
       printf("%s:\n", p->ident);
       printf("\tpushq %%rbp\n");
       printf("\tmovq %%rsp, %%rbp\n");

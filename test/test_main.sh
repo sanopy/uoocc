@@ -117,10 +117,15 @@ runtest 'int main() { 10 + 5 == 3 * 5; }' 1
 runtest 'int main() { 23 == 39; }' 0
 
 echo "=== variable ==="
+echo " - local"
 runtest 'int main() {int a; a = 1; a; }' 1
 runtest 'int main() {int a; int b; a = 1; b = 2; a + b; }' 3
 runtest 'int main() {int a; int b; int c; a = b = c = 1; a + b + c; }' 3
 runtest 'int main() {int a; int b; int c; a = 5; b = a + 6; c = b * 2; a * 2 + b + c; }' 43
+echo " - global"
+runtest 'int x; int main() { x = 1; x; }' 1
+runtest 'int x; int inc() { ++x; } int main() { x = 2; inc(); x; }' 3
+runtest 'int a[20]; int test() { a[5] = 5; } int main() { test(); a[5]; }' 5
 
 echo "=== array ==="
 runtest 'int main() {int a[2]; *a = 1; *a; }' 1
@@ -209,7 +214,7 @@ runtest 'int main() {
 echo "=== fail test ==="
 failtest '1;' "'int' was expected."
 failtest 'int () {}' "ident was expected."
-failtest 'int main) {}' "'(' was expected."
+# failtest 'int main) {}' "'(' was expected."
 failtest 'int main( {}' "'int' was expected."
 failtest 'int main() }' "'{' was expected."
 failtest 'int main() {' "primary-expression was expected."

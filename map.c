@@ -9,12 +9,13 @@ MapEntry *allocate_MapEntry(char *key, void *val) {
   return e;
 }
 
-Map *map_new(void) {
+Map *map_new(Map *next) {
   Map *m = (Map *)malloc(sizeof(Map));
   if (m == NULL)
     return NULL;
   m->vec = vector_new();
   m->size = 0;
+  m->next = next;
   return m;
 }
 
