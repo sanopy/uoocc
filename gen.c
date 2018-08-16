@@ -1,5 +1,14 @@
 #include "uoocc.h"
 
+void emit_string(void) {
+  Vector *v = string_table->vec;
+  for (int i = 0; i < v->size; i++) {
+    MapEntry *e = vector_at(v, i);
+    printf(".L%d:\n", *(int *)(e->val));
+    printf("\t.string %s\n", e->key);
+  }
+}
+
 static void emit_lvalue(Ast *p) {
   if (p->type == AST_OP_DEREF) {
     codegen(p->left);
@@ -14,14 +23,20 @@ static void emit_lvalue(Ast *p) {
   }
 }
 
+static int get_shift_length(CType *ctype) {
+  if (ctype->ptrof->type == TYPE_CHAR)
+    return 0;
+  else if (ctype->ptrof->type == TYPE_INT)
+    return 2;
+  else
+    return 3;
+}
+
 static void emit_expr(Ast *p) {
   CType *ltype = p->left == NULL ? NULL : p->left->ctype;
   CType *rtype = p->right == NULL ? NULL : p->right->ctype;
 
   switch (p->type) {
-    case AST_INT:
-      printf("\tpushq $%d\n", p->ival);
-      break;
     case AST_OP_ADD:
     case AST_OP_SUB:
       codegen(p->left);
@@ -33,12 +48,12 @@ static void emit_expr(Ast *p) {
         printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
       else if (ltype->type == TYPE_PTR && rtype->type == TYPE_PTR) {
         printf("\tsubq %%rdx, %%rax\n");
-        printf("\tsarq $%d, %%rax\n", ltype->ptrof->type == TYPE_INT ? 2 : 3);
+        printf("\tsarq $%d, %%rax\n", get_shift_length(ltype));
       } else {
         if (ltype->type == TYPE_INT)
-          printf("\tsalq $%d, %%rax\n", rtype->ptrof->type == TYPE_INT ? 2 : 3);
+          printf("\tsalq $%d, %%rax\n", get_shift_length(rtype));
         else
-          printf("\tsalq $%d, %%rdx\n", ltype->ptrof->type == TYPE_INT ? 2 : 3);
+          printf("\tsalq $%d, %%rdx\n", get_shift_length(ltype));
         printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
       }
       printf("\tpushq %%rax\n");
@@ -82,6 +97,9 @@ void codegen(Ast *p) {
   switch (p->type) {
     case AST_INT:
       printf("\tpushq $%d\n", p->ival);
+      break;
+    case AST_STR:
+      printf("\tpushq $.L%d\n", p->label);
       break;
     case AST_OP_ADD:
     case AST_OP_SUB:

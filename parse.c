@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include "uoocc.h"
 
+Map *string_table;
+
 CType *make_ctype(int type, CType *ptrof) {
   CType *p = (CType *)malloc(sizeof(CType));
   p->type = type;
@@ -22,6 +24,14 @@ Ast *make_ast_int(int val) {
   p->type = AST_INT;
   p->ctype = make_ctype(TYPE_INT, NULL);
   p->ival = val;
+  return p;
+}
+
+Ast *make_ast_str(int label) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_STR;
+  p->ctype = make_ctype(TYPE_PTR, make_ctype(TYPE_CHAR, NULL));
+  p->label = label;
   return p;
 }
 
@@ -100,6 +110,7 @@ static Ast *call_function(void) {
 }
 
 // <primary_expr> = <ident> | <number> | '(' <expr> ')' | <call_function>
+//   | <string>
 static Ast *primary_expr(void) {
   int type = current_token()->type;
   Ast *ret = NULL;
@@ -116,6 +127,15 @@ static Ast *primary_expr(void) {
   } else if (type == TK_IDENT) {
     ret = make_ast_var(current_token()->text, current_token());
     next_token();
+  } else if (type == TK_STR) {
+    MapEntry *e = map_get(string_table, current_token()->text);
+    if (e == NULL) {
+      int seq = get_sequence_num();
+      e = allocate_MapEntry(current_token()->text, allocate_integer(seq));
+      map_put(string_table, e);
+    }
+    next_token();
+    ret = make_ast_str(*(int *)e->val);
   } else
     error_with_token(current_token(), "primary-expression was expected");
 

@@ -49,7 +49,7 @@ static char *read_ident(FILE *fp, char c) {
 }
 
 static Token *make_token(int row, int col, int type, char *text) {
-  Token *t = (Token *)malloc(sizeof(Token));
+  Token *t = malloc(sizeof(Token));
 
   t->row = row;
   t->col = col;
@@ -86,132 +86,151 @@ void init_token_queue(FILE *fp) {
     if (c == '+') {
       if ((c = getc(fp)) == '+') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_INC,
-                                               allocate_string("++")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_INC, allocate_string("++")));
       } else {
         ungetc(c, fp);
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_PLUS,
-                                               allocate_string("+")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_PLUS, allocate_string("+")));
       }
     } else if (c == '-') {
       if ((c = getc(fp)) == '-') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_DEC,
-                                               allocate_string("--")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_DEC, allocate_string("--")));
       } else {
         ungetc(c, fp);
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_MINUS,
-                                               allocate_string("-")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_MINUS, allocate_string("-")));
       }
     } else if (c == '*')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_STAR,
-                                             allocate_string("*")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_STAR, allocate_string("*")));
     else if (c == '/')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_DIV,
-                                             allocate_string("/")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_DIV, allocate_string("/")));
     else if (c == '&')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_AMP,
-                                             allocate_string("&")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_AMP, allocate_string("&")));
     else if (c == '(')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LPAR,
-                                             allocate_string("(")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_LPAR, allocate_string("(")));
     else if (c == ')')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RPAR,
-                                             allocate_string(")")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_RPAR, allocate_string(")")));
     else if (c == '=') {
       if ((c = getc(fp)) == '=') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_EQUAL,
-                                               allocate_string("==")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_EQUAL, allocate_string("==")));
       } else {
         ungetc(c, fp);
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_ASSIGN,
-                                               allocate_string("=")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_ASSIGN, allocate_string("=")));
       }
     } else if (c == ';')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_SEMI,
-                                             allocate_string(";")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_SEMI, allocate_string(";")));
     else if (c == ',')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_COMMA,
-                                             allocate_string(",")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_COMMA, allocate_string(",")));
     else if (c == '{')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LCUR,
-                                             allocate_string("{")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_LCUR, allocate_string("{")));
     else if (c == '}')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RCUR,
-                                             allocate_string("}")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_RCUR, allocate_string("}")));
     else if (c == '[')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_LBRA,
-                                             allocate_string("[")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_LBRA, allocate_string("[")));
     else if (c == ']')
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_RBRA,
-                                             allocate_string("]")));
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_RBRA, allocate_string("]")));
     else if (c == '<') {
       if ((c = getc(fp)) == '=') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_LE,
-                                               allocate_string("<=")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_LE, allocate_string("<=")));
       } else {
         ungetc(c, fp);
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_LT,
-                                               allocate_string("<")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_LT, allocate_string("<")));
       }
     } else if (c == '>') {
       if ((c = getc(fp)) == '=') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_GE,
-                                               allocate_string(">=")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_GE, allocate_string(">=")));
       } else {
         ungetc(c, fp);
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_GT,
-                                               allocate_string(">")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_GT, allocate_string(">")));
       }
     } else if (c == '!') {
       if ((c = getc(fp)) == '=') {
         now_col++;
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_NEQUAL,
-                                               allocate_string("!=")));
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_NEQUAL, allocate_string("!=")));
       } else {
         ungetc(c, fp);
       }
     } else if (isdigit(c)) {
       char *s = read_number(fp, c);
-      vector_push_back(v, (void *)make_token(now_row, now_col, TK_NUM, s));
+      vector_push_back(v, make_token(now_row, now_col, TK_NUM, s));
       now_col += strlen(s) - 1;
     } else if (isalpha(c) || c == '_') {
       char *s = read_ident(fp, c);
       if (strcmp(s, "if") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_IF, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_IF, s));
       else if (strcmp(s, "else") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_ELSE, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_ELSE, s));
       else if (strcmp(s, "while") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_WHILE, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_WHILE, s));
       else if (strcmp(s, "for") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_FOR, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_FOR, s));
       else if (strcmp(s, "int") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_INT, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_INT, s));
       else if (strcmp(s, "char") == 0)
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_CHAR, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_CHAR, s));
       else
-        vector_push_back(v, (void *)make_token(now_row, now_col, TK_IDENT, s));
+        vector_push_back(v, make_token(now_row, now_col, TK_IDENT, s));
       now_col += strlen(s) - 1;
+    } else if (c == '"') {
+      int row = now_row, col = now_col;
+      int len = 0;
+      char str[MAX_TOKEN_LENGTH];
+      str[len++] = c;
+      now_col++;
+      while ((c = getc(fp)) != '"') {
+        if (c == '\n') {
+          now_row++;
+          now_col = 1;
+        } else
+          now_col++;
+
+        str[len++] = c;
+      }
+      str[len++] = c;
+      str[len] = '\0';
+      now_col++;
+      vector_push_back(v, make_token(row, col, TK_STR, allocate_string(str)));
     } else
       error("unknown token has read");
 
     now_col++;
   }
   vector_push_back(
-      v, (void *)make_token(now_row, now_col, TK_EOF, allocate_string("EOF")));
+      v, make_token(now_row, now_col, TK_EOF, allocate_string("EOF")));
 }
 
 Token *current_token(void) {
-  return (Token *)vector_at(token_queue.vec, token_queue.idx);
+  return vector_at(token_queue.vec, token_queue.idx);
 }
 
 Token *second_token(void) {
-  return (Token *)vector_at(token_queue.vec, token_queue.idx + 1);
+  return vector_at(token_queue.vec, token_queue.idx + 1);
 }
 
 Token *next_token(void) {
-  return (Token *)vector_at(token_queue.vec, ++token_queue.idx);
+  return vector_at(token_queue.vec, ++token_queue.idx);
 }

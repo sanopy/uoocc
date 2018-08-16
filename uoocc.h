@@ -38,6 +38,7 @@ MapEntry *map_get(Map *, char *);
 enum {
   TK_EOF,
   TK_NUM,
+  TK_STR,
   TK_IDENT,
   TK_PLUS,    // +
   TK_MINUS,   // -
@@ -102,6 +103,7 @@ int get_sequence_num(void);
 // parse.c
 enum {
   AST_INT,
+  AST_STR,
   AST_OP_ADD,
   AST_OP_SUB,
   AST_OP_MUL,
@@ -152,6 +154,7 @@ typedef struct _Ast {
   int type;
   CType *ctype;
   int ival;
+  int label;
   char *ident;
   Vector *args;
   Vector *statements;
@@ -167,6 +170,8 @@ typedef struct _Ast {
   struct _Ast *statement;
 } Ast;
 
+extern Map *string_table;
+
 CType *make_ctype(int, CType *);
 Ast *make_ast_op(int, Ast *, Ast *, Token *);
 Ast *make_ast_int(int);
@@ -177,4 +182,5 @@ void semantic_analysis(Ast *);
 int sizeof_ctype(CType *);
 
 // gen.c
+void emit_string(void);
 void codegen(Ast *);

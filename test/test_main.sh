@@ -17,7 +17,7 @@ assertEquals() {
 
 runtest() {
   echo "$1" | ./cc.out > test.s
-  gcc test.s test/func.c -o test.out
+  gcc -static test.s test/func.c -o test.out
   ./test.out
   assertEquals $? $2
   rm -f test.s test.out
@@ -42,6 +42,10 @@ echo '=== number ==='
 runtest 'int main() { 0; }' 0
 runtest 'int main() { 2; }' 2
 runtest 'int main() { 9; }' 9
+
+echo '=== string ==='
+runtest 'int main() { char *s; s = "abc"; s[0]; }' 97
+runtest 'int main() { char *s; s = "abc"; s[1]; }' 98
 
 echo '=== additive expression ==='
 echo " - integer"
