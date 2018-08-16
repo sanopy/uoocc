@@ -64,6 +64,8 @@ static void emit_expr(Ast *p) {
       codegen(p->right);
       printf("\tpopq %%rbx\n");
       printf("\tpopq %%rax\n");
+      printf("\tand $0xffffffff, %%ebx\n");
+      printf("\tand $0xffffffff, %%eax\n");
       if (p->type == AST_OP_MUL)
         printf("\tmul %%rbx\n");
       else {
@@ -195,6 +197,7 @@ void codegen(Ast *p) {
         char *reg[] = {"", "rdi", "rsi", "rdx", "rcx", "r8", "r9"};
         printf("\tpopq %%%s\n", reg[i]);
       }
+      printf("\txor %%al, %%al\n");
       printf("\tcall %s\n", p->ident);
       printf("\tpushq %%rax\n");
       break;
@@ -213,9 +216,13 @@ void codegen(Ast *p) {
       for (int i = 0; i < (p->args->size > 6 ? 6 : p->args->size); i++) {
         Ast *node = vector_at(p->args, i);
         char *s = node->ident;
+        char *reg8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
         char *reg32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
         char *reg64[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-        if (node->ctype->type == TYPE_INT)
+        if (node->ctype->type == TYPE_CHAR)
+          printf("\tmovb %%%s, %d(%%rbp)\n", reg8[i],
+                 -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
+        else if (node->ctype->type == TYPE_INT)
           printf("\tmovl %%%s, %d(%%rbp)\n", reg32[i],
                  -((SymbolTableEntry *)map_get(symbol_table, s)->val)->offset);
         else

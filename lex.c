@@ -215,7 +215,8 @@ void init_token_queue(FILE *fp) {
       now_col++;
       vector_push_back(v, make_token(row, col, TK_STR, allocate_string(str)));
     } else
-      error("unknown token has read");
+      printf("%c\n", c);
+    // error("unknown token has read");
 
     now_col++;
   }

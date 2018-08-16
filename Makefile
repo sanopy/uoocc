@@ -16,6 +16,11 @@ utiltest.out: vector.o map.o mylib.o test/test_utils.c
 
 .PHONY: test
 test: cc.out utiltest.out format
+	cat test/expr.c | ./cc.out > test.s && gcc -static test.s -o test.out && ./test.out
+	cat test/func.c | ./cc.out > test.s && gcc -static test.s -o test.out && ./test.out
+	cat test/statement.c | ./cc.out > test.s && gcc -static test.s -o test.out && ./test.out
+	cat test/variable.c | ./cc.out > test.s && gcc -static test.s -o test.out && ./test.out
+	rm -f test.s test.out
 	./utiltest.out
 	./test/test_main.sh
 

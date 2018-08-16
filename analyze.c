@@ -192,6 +192,7 @@ void semantic_analysis(Ast *p) {
       for (int i = 0; i < p->args->size; i++)
         semantic_analysis(vector_at(p->args, i));
       semantic_analysis(p->statement);
+      symbol_table = symbol_table->next;
       p->offset_from_bp = offset_from_bp;
       break;
     case AST_COMPOUND_STATEMENT:

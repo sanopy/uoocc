@@ -1,0 +1,167 @@
+int cnt;
+int expect(int a, int b) {
+  if (a != b) {
+    printf("Test %d: Failed\n", cnt++);
+    printf("  %d expected, but got %d\n", b, a);
+    exit(1);
+  } else
+    printf("Test %d: Passed\n", cnt++);
+}
+
+int test_number() {
+  expect(0, 0);
+  expect(2, 2);
+  expect(9, 9);
+}
+
+int test_additive_expr() {
+  expect(1 + 2, 3);
+  expect(2 - 1, 1);
+  expect(1 + 2 + 3, 6);
+  expect(3 - 2 - 1, 0);
+  expect(5 + 6 - 3, 8);
+  expect(3 + 5 - 3 + 6, 11);
+}
+
+int test_multiplicative_expr() {
+  expect(2 * 3, 6);
+  expect(4 / 2, 2);
+  expect(1 * 2 + 3, 5);
+  expect(1 + 2 * 3, 7);
+  expect(1 / 2 + 3, 3);
+  expect(1 + 2 / 3, 1);
+  expect(1 * 2 + 3 + 4 * 5 * 6 / 7, 22);
+}
+
+int test_primary_expr() {
+  expect(6 - (5 - 4), 5);
+  expect((1 + 2) * 3, 9);
+  expect((1 + 2) * 3 + (4 + 5 + 6) * 2, 39);
+}
+
+int test_unary_expr() {
+  int a;
+  a = 1;
+  expect(++a, 2);
+  ++a;
+  expect(a, 3);
+  expect(--a, 2);
+  --a;
+  expect(a, 1);
+}
+
+int test_postfix_expr() {
+  int a;
+  a = 1;
+  expect(a++, 1);
+  expect(a, 2);
+  expect(a--, 2);
+  expect(a, 1);
+}
+
+int test_relational_expr() {
+  expect(3 < 5, 1);
+  expect(5 < 5, 0);
+  expect(3 <= 5, 1);
+  expect(5 <= 5, 1);
+  expect(5 <= 3, 0);
+  expect(5 > 3, 1);
+  expect(5 > 5, 0);
+  expect(5 >= 3, 1);
+  expect(5 >= 5, 1);
+  expect(3 >= 5, 0);
+}
+
+int test_equality_expr() {
+  expect(25 == 25, 1);
+  expect(10 + 5 == 3 * 5, 1);
+  expect(23 == 39, 0);
+}
+
+int test_additive_ptr() {
+  int a[4];
+  int *p;
+  p = a;
+  a[0] = 1;
+  a[1] = 2;
+  a[2] = 4;
+  a[3] = 8;
+
+  expect(*p, 1);
+  expect(*(p + 2), 4);
+  expect(*(p + 3), 8);
+  p = p + 3;
+  expect(*(p - 2), 2);
+  expect(p - a, 3);
+}
+
+int swap(int *p, int *q) {
+  int tmp;
+  tmp = *p;
+  *p = *q;
+  *q = tmp;
+}
+
+int test_unary_ptr() {
+  int a[4];
+  int *p;
+  p = a;
+  a[0] = 1;
+  a[1] = 2;
+  a[2] = 4;
+  a[3] = 8;
+
+  expect(*(++p), 2);
+  p = a + 3;
+  expect(*(--p), 4);
+
+  int x;
+  int y;
+  x = 5;
+  y = 9;
+
+  p = &x;
+  expect(*p, 5);
+  *p = 15;
+  expect(*p, 15);
+  expect(x, 15);
+
+  swap(&x, &y);
+  expect(x, 9);
+  expect(y, 15);
+}
+
+int test_postfix_ptr() {
+  int a[4];
+  int *p;
+  p = a;
+  a[0] = 1;
+  a[1] = 2;
+  a[2] = 4;
+  a[3] = 8;
+
+  expect(*(p++), 1);
+  expect(*p, 2);
+  p = a + 3;
+  expect(*(p--), 8);
+  expect(*p, 4);
+}
+
+int main() {
+  printf("Testing expression ...\n");
+
+  test_number();
+  test_additive_expr();
+  test_multiplicative_expr();
+  test_primary_expr();
+  test_unary_expr();
+  test_postfix_expr();
+  test_relational_expr();
+  test_equality_expr();
+  test_additive_ptr();
+  test_unary_ptr();
+
+  printf("OK!\n");
+
+  0;
+}
