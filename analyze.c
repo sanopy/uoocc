@@ -115,11 +115,14 @@ void semantic_analysis(Ast *p) {
     case AST_OP_B_AND:
     case AST_OP_B_XOR:
     case AST_OP_B_OR:
+    case AST_OP_L_AND:
+    case AST_OP_L_OR:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_B_NOT:
+    case AST_OP_L_NOT:
       semantic_analysis(p->left);
       p->ctype = char_to_int(p->left->ctype);
       break;

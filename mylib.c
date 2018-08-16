@@ -42,12 +42,12 @@ void error_with_token(Token *tk, char *s) {
 }
 
 void expect_token(Token *tk, int expect) {
-  char *token[] = {"EOF",    "number",  "string", "ident", "'+'",   "'-'",
-                   "'*'",    "'/'",     "'&'",    "'|'",   "'^'",   "'~'",
-                   "'('",    "')'",     "'='",    "';'",   "','",   "'{'",
-                   "'}'",    "'['",     "']'",    "'++'",  "'--'",  "'<'",
-                   "'<='",   "'>'",     "'>='",   "'=='",  "'!='",  "'if'",
-                   "'else'", "'while'", "'for'",  "'int'", "'char'"};
+  char *token[] = {
+      "EOF",  "number", "string",  "ident", "'+'",   "'-'",   "'*'",  "'/'",
+      "'&'",  "'|'",    "'^'",     "'~'",   "'&&'",  "'||'",  "'!'",  "'('",
+      "')'",  "'='",    "';'",     "','",   "'{'",   "'}'",   "'['",  "']'",
+      "'++'", "'--'",   "'<'",     "'<='",  "'>'",   "'>='",  "'=='", "'!='",
+      "'if'", "'else'", "'while'", "'for'", "'int'", "'char'"};
   if (tk == NULL)
     error(allocate_concat_2string(token[expect], " was expected"));
   else if (tk->type != expect)

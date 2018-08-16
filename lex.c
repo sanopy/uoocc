@@ -109,13 +109,27 @@ void init_token_queue(FILE *fp) {
     else if (c == '/')
       vector_push_back(
           v, make_token(now_row, now_col, TK_DIV, allocate_string("/")));
-    else if (c == '&')
-      vector_push_back(
-          v, make_token(now_row, now_col, TK_AMP, allocate_string("&")));
-    else if (c == '|')
-      vector_push_back(
-          v, make_token(now_row, now_col, TK_B_OR, allocate_string("|")));
-    else if (c == '^')
+    else if (c == '&') {
+      if ((c = getc(fp)) == '&') {
+        now_col++;
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_L_AND, allocate_string("&&")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_AMP, allocate_string("&")));
+      }
+    } else if (c == '|') {
+      if ((c = getc(fp)) == '|') {
+        now_col++;
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_L_OR, allocate_string("||")));
+      } else {
+        ungetc(c, fp);
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_B_OR, allocate_string("|")));
+      }
+    } else if (c == '^')
       vector_push_back(
           v, make_token(now_row, now_col, TK_B_XOR, allocate_string("^")));
     else if (c == '~')
@@ -182,6 +196,8 @@ void init_token_queue(FILE *fp) {
             v, make_token(now_row, now_col, TK_NEQUAL, allocate_string("!=")));
       } else {
         ungetc(c, fp);
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_L_NOT, allocate_string("!")));
       }
     } else if (isdigit(c)) {
       char *s = read_number(fp, c);

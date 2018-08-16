@@ -54,3 +54,4 @@ failtest 'int f(int x, int x) {}' "redifinition of 'x'."
 failtest 'int f(int a, int b, int c, int d, int e, int f, int g) {}' "too many arguments."
 failtest 'int main() { if () {} }' "primary-expression was expected."
 failtest 'int main() { while () {} }' "primary-expression was expected."
+echo 'OK!'

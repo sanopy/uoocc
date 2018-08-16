@@ -149,6 +149,14 @@ void codegen(Ast *p) {
       printf("\tnot %%rax\n");
       printf("\tpushq %%rax\n");
       break;
+    case AST_OP_L_NOT:
+      codegen(p->left);
+      printf("\tpopq %%rax\n");
+      printf("\tcmpq $0, %%rax\n");
+      printf("\tsete %%al\n");
+      printf("\tmovzbl %%al, %%eax\n");
+      printf("\tpushq %%rax\n");
+      break;
     case AST_OP_REF:
       emit_lvalue(p->left);
       break;
@@ -159,12 +167,24 @@ void codegen(Ast *p) {
       break;
     case AST_OP_B_AND:
     case AST_OP_B_XOR:
-    case AST_OP_B_OR:
+    case AST_OP_B_OR: {
       codegen(p->left);
       codegen(p->right);
       char *op = p->type == AST_OP_B_AND
                      ? "and"
                      : p->type == AST_OP_B_XOR ? "xor" : "or";
+      printf("\tpopq %%rdx\n");
+      printf("\tpopq %%rax\n");
+      printf("\t%s %%rdx, %%rax\n", op);
+      printf("\tpushq %%rax\n");
+      break;
+    }
+    case AST_OP_L_AND:
+    case AST_OP_L_OR:
+      // TODO: short-circuit evaluation
+      codegen(p->left);
+      codegen(p->right);
+      char *op = p->type == AST_OP_L_AND ? "and" : "or";
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\t%s %%rdx, %%rax\n", op);
