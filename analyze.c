@@ -112,8 +112,15 @@ void semantic_analysis(Ast *p) {
     case AST_OP_LE:
     case AST_OP_EQUAL:
     case AST_OP_NEQUAL:
+    case AST_OP_B_AND:
+    case AST_OP_B_XOR:
+    case AST_OP_B_OR:
       semantic_analysis(p->left);
       semantic_analysis(p->right);
+      p->ctype = char_to_int(p->left->ctype);
+      break;
+    case AST_OP_B_NOT:
+      semantic_analysis(p->left);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_POST_INC:

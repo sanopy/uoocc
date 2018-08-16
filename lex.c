@@ -112,6 +112,15 @@ void init_token_queue(FILE *fp) {
     else if (c == '&')
       vector_push_back(
           v, make_token(now_row, now_col, TK_AMP, allocate_string("&")));
+    else if (c == '|')
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_B_OR, allocate_string("|")));
+    else if (c == '^')
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_B_XOR, allocate_string("^")));
+    else if (c == '~')
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_B_NOT, allocate_string("~")));
     else if (c == '(')
       vector_push_back(
           v, make_token(now_row, now_col, TK_LPAR, allocate_string("(")));
@@ -215,8 +224,7 @@ void init_token_queue(FILE *fp) {
       now_col++;
       vector_push_back(v, make_token(row, col, TK_STR, allocate_string(str)));
     } else
-      printf("%c\n", c);
-    // error("unknown token has read");
+      error("unknown token has read");
 
     now_col++;
   }

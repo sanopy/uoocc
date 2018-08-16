@@ -45,6 +45,9 @@ enum {
   TK_STAR,    // *
   TK_DIV,     // /
   TK_AMP,     // &
+  TK_B_OR,    // |
+  TK_B_XOR,   // ^
+  TK_B_NOT,   // ~
   TK_LPAR,    // (
   TK_RPAR,    // )
   TK_ASSIGN,  // =
@@ -114,10 +117,14 @@ enum {
   AST_OP_PRE_DEC,
   AST_OP_REF,
   AST_OP_DEREF,
+  AST_OP_B_NOT,
   AST_OP_LT,
   AST_OP_LE,
   AST_OP_EQUAL,
   AST_OP_NEQUAL,
+  AST_OP_B_AND,
+  AST_OP_B_XOR,
+  AST_OP_B_OR,
   AST_OP_ASSIGN,
   AST_VAR,
   AST_DECL_LOCAL_VAR,

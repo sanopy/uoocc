@@ -143,6 +143,12 @@ void codegen(Ast *p) {
         emit_expr(node);
       }
       break;
+    case AST_OP_B_NOT:
+      codegen(p->left);
+      printf("\tpopq %%rax\n");
+      printf("\tnot %%rax\n");
+      printf("\tpushq %%rax\n");
+      break;
     case AST_OP_REF:
       emit_lvalue(p->left);
       break;
@@ -150,6 +156,19 @@ void codegen(Ast *p) {
       codegen(p->left);
       printf("\tpopq %%rax\n");
       printf("\tpushq (%%rax)\n");
+      break;
+    case AST_OP_B_AND:
+    case AST_OP_B_XOR:
+    case AST_OP_B_OR:
+      codegen(p->left);
+      codegen(p->right);
+      char *op = p->type == AST_OP_B_AND
+                     ? "and"
+                     : p->type == AST_OP_B_XOR ? "xor" : "or";
+      printf("\tpopq %%rdx\n");
+      printf("\tpopq %%rax\n");
+      printf("\t%s %%rdx, %%rax\n", op);
+      printf("\tpushq %%rax\n");
       break;
     case AST_OP_LT:
     case AST_OP_LE:

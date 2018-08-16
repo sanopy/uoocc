@@ -48,6 +48,10 @@ int test_unary_expr() {
   expect(--a, 2);
   --a;
   expect(a, 1);
+
+  a = 0;
+  expect(~a, 0 - 1);
+  expect(~~a, 0);
 }
 
 int test_postfix_expr() {
@@ -76,6 +80,15 @@ int test_equality_expr() {
   expect(25 == 25, 1);
   expect(10 + 5 == 3 * 5, 1);
   expect(23 == 39, 0);
+}
+
+int test_bitwise_expr() {
+  expect(11 & 11, 11);
+  expect(11 | 11, 11);
+  expect(11 ^ 11, 0);
+  expect(5 & 10, 0);
+  expect(5 | 10, 15);
+  expect(5 ^ 10, 15);
 }
 
 int test_additive_ptr() {
@@ -158,6 +171,7 @@ int main() {
   test_postfix_expr();
   test_relational_expr();
   test_equality_expr();
+  test_bitwise_expr();
   test_additive_ptr();
   test_unary_ptr();
 

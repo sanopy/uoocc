@@ -177,7 +177,7 @@ static Ast *postfix_expr(void) {
 
 /*
   <unary_expr> = <postfix_expr> | '++' <unary_expr> | '--' <unary_expr> |
-    '&' <unary_expr> | '*' <unary_expr>
+    '&' <unary_expr> | '*' <unary_expr> | '~' <unary_expr>
 */
 static Ast *unary_expr(void) {
   Token *tk = current_token();
@@ -192,6 +192,8 @@ static Ast *unary_expr(void) {
     ast_op = AST_OP_REF;
   else if (type == TK_STAR)
     ast_op = AST_OP_DEREF;
+  else if (type == TK_B_NOT)
+    ast_op = AST_OP_B_NOT;
   else
     ast_op = -1;
 
@@ -309,7 +311,71 @@ static Ast *equality_expr(Ast *unary) {
   return equality_expr_tail(p);
 }
 
-// <expr> = <unary_expr> '=' <expr> | <equality_expr>
+/*
+  <and_expr> = <equality_expr> <and_expr_tail>
+  <and_expr_tail> = ε | '&' <equality_expr> <and_expr_tail>
+*/
+static Ast *and_expr_tail(Ast *left) {
+  Token *tk = current_token();
+  if (tk->type == TK_AMP) {
+    next_token();
+    Ast *right = relational_expr(NULL);
+    Ast *p = make_ast_op(AST_OP_B_AND, left, right, tk);
+    return and_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *and_expr(Ast *unary) {
+  Ast *p = equality_expr(unary);
+  return and_expr_tail(p);
+}
+
+/*
+  <exclusive_or_expr> = <and_expr> <exclusive_or_expr_tail>
+  <exclusive_or_expr_tail> = ε | '^' <and_expr> <exclusive_or_expr_tail>
+*/
+static Ast *exclusive_or_expr_tail(Ast *left) {
+  Token *tk = current_token();
+  if (tk->type == TK_B_XOR) {
+    next_token();
+    Ast *right = and_expr(NULL);
+    Ast *p = make_ast_op(AST_OP_B_XOR, left, right, tk);
+    return exclusive_or_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *exclusive_or_expr(Ast *unary) {
+  Ast *p = and_expr(unary);
+  return exclusive_or_expr_tail(p);
+}
+
+/*
+  <inclusive_or_expr> = <exclusive_or_expr> <inclusive_or_expr_tail>
+  <inclusive_or_expr_tail> = ε | '|' <exclusive_or_expr>
+  <inclusive_or_expr_tail>
+*/
+static Ast *inclusive_or_expr_tail(Ast *left) {
+  Token *tk = current_token();
+  if (tk->type == TK_B_OR) {
+    next_token();
+    Ast *right = exclusive_or_expr(NULL);
+    Ast *p = make_ast_op(AST_OP_B_OR, left, right, tk);
+    return inclusive_or_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *inclusive_or_expr(Ast *unary) {
+  Ast *p = exclusive_or_expr(unary);
+  return inclusive_or_expr_tail(p);
+}
+
+// <expr> = <unary_expr> '=' <expr> | <inclusive_or_expr>
 static Ast *expr(void) {
   Ast *p = unary_expr();
   if (current_token()->type == TK_ASSIGN) {
@@ -317,7 +383,7 @@ static Ast *expr(void) {
     next_token();
     return make_ast_op(AST_OP_ASSIGN, p, expr(), tk);
   } else {
-    return equality_expr(p);
+    return inclusive_or_expr(p);
   }
 }
 
