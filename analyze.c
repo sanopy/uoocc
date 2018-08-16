@@ -221,6 +221,9 @@ void semantic_analysis(Ast *p) {
       semantic_analysis(p->cond);
       semantic_analysis(p->statement);
       break;
+    case AST_RETURN_STATEMENT:
+      semantic_analysis(p->left);
+      break;
   }
 
   return;

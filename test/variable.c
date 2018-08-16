@@ -6,6 +6,7 @@ int expect(int a, int b) {
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
+  return 0;
 }
 
 int expect_char(char a, char b) {
@@ -15,6 +16,7 @@ int expect_char(char a, char b) {
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
+  return 0;
 }
 
 int test_int_var() {
@@ -29,6 +31,7 @@ int test_int_var() {
   expect(a + b, 16);
   expect(c, 22);
   expect(a * 2 + b + c, 43);
+  return 0;
 }
 
 int test_char_var() {
@@ -42,6 +45,7 @@ int test_char_var() {
   expect_char(y, 2);
   expect_char(z[0], 1);
   expect_char(z[0] + y, 3);
+  return 0;
 }
 
 int test_array() {
@@ -77,6 +81,7 @@ int test_array() {
   expect(c[0] + c[1], 3);
   expect(d[0][0] + d[0][1] * d[1][0], 7);
   expect(1 [c], 2);
+  return 0;
 }
 
 int test_string() {
@@ -85,14 +90,18 @@ int test_string() {
 
   expect_char(s[0], 97);
   expect_char(s[0], 97);
+  return 0;
 }
 
 int x;
 int a[20];
 
-int inc() { ++x; }
+int inc() { return ++x; }
 
-int assign() { a[5] = 5; }
+int assign() {
+  a[5] = 5;
+  return 0;
+}
 
 int test_global_var() {
   x = 1;
@@ -101,6 +110,7 @@ int test_global_var() {
   expect(x, 2);
   assign();
   expect(a[5], 5);
+  return 0;
 }
 
 int main() {
@@ -114,5 +124,5 @@ int main() {
 
   printf("OK!\n");
 
-  0;
+  return 0;
 }

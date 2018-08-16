@@ -6,35 +6,37 @@ int expect(int a, int b) {
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
+  return 0;
 }
 
 int f1() {
   if (1 == 2)
-    1;
+    return 1;
   else
-    2;
+    return 2;
 }
 
 int fact(int n) {
   if (n <= 1)
-    1;
+    return 1;
   else
-    n* fact(n - 1);
+    return n * fact(n - 1);
 }
 
 int fib(int n) {
   if (n <= 0)
-    0;
+    return 0;
   else if (n == 1)
-    1;
+    return 1;
   else
-    fib(n - 1) + fib(n - 2);
+    return fib(n - 1) + fib(n - 2);
 }
 
 int test_if() {
   expect(f1(), 2);
   expect(fact(5), 120);
   expect(fib(8), 21);
+  return 0;
 }
 
 int f2() {
@@ -42,7 +44,7 @@ int f2() {
   i = 1;
   while (i < 10)
     i++;
-  i;
+  return i;
 }
 
 int sum1() {
@@ -52,19 +54,20 @@ int sum1() {
   i = 1;
   while (i <= 10)
     sum = sum + i++;
-  sum;
+  return sum;
 }
 
 int test_while() {
   expect(f2(), 10);
   expect(sum1(), 55);
+  return 0;
 }
 
 int f3() {
   int i;
   for (i = 0; i <= 10; i++)
-    0;
-  i;
+    ;
+  return i;
 }
 
 int sum2() {
@@ -73,12 +76,13 @@ int sum2() {
   sum = 0;
   for (i = 1; i <= 10; i++)
     sum = sum + i;
-  sum;
+  return sum;
 }
 
 int test_for() {
   expect(f3(), 11);
   expect(sum2(), 55);
+  return 0;
 }
 
 int main() {
@@ -90,5 +94,5 @@ int main() {
 
   printf("OK!\n");
 
-  0;
+  return 0;
 }

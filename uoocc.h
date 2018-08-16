@@ -74,6 +74,7 @@ enum {
   TK_FOR,     // for
   TK_INT,     // int
   TK_CHAR,    // char
+  TK_RETURN,  // return
 };
 
 typedef struct {
@@ -141,6 +142,7 @@ enum {
   AST_IF_STATEMENT,
   AST_WHILE_STATEMENT,
   AST_FOR_STATEMENT,
+  AST_RETURN_STATEMENT,
 };
 
 enum {

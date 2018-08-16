@@ -217,6 +217,8 @@ void init_token_queue(FILE *fp) {
         vector_push_back(v, make_token(now_row, now_col, TK_INT, s));
       else if (strcmp(s, "char") == 0)
         vector_push_back(v, make_token(now_row, now_col, TK_CHAR, s));
+      else if (strcmp(s, "return") == 0)
+        vector_push_back(v, make_token(now_row, now_col, TK_RETURN, s));
       else
         vector_push_back(v, make_token(now_row, now_col, TK_IDENT, s));
       now_col += strlen(s) - 1;

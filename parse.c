@@ -613,10 +613,32 @@ static Ast *compound_statement(void) {
   return p;
 }
 
+// <expr_statement> = <expr_opt> ';'
 static Ast *expr_statement(void) {
-  Ast *p = expr();
-  expect_token(current_token(), TK_SEMI);
+  if (current_token()->type != TK_SEMI) {
+    Ast *p = expr();
+    expect_token(current_token(), TK_SEMI);
+    next_token();
+    return p;
+  } else {
+    next_token();
+    return NULL;
+  }
+}
+
+// <expr_statement> = 'return' <expr_opt> ';'
+static Ast *jump_statement(void) {
+  // current token is 'return' when enter this function.
+  Ast *p = make_ast_statement(AST_RETURN_STATEMENT);
   next_token();
+  if (current_token()->type != TK_SEMI) {
+    p->left = expr();
+    expect_token(current_token(), TK_SEMI);
+    next_token();
+  } else {
+    next_token();
+    p->left = NULL;
+  }
   return p;
 }
 
@@ -629,6 +651,8 @@ static Ast *statement(void) {
     return iteration_statement();
   else if (current_token()->type == TK_LCUR)
     return compound_statement();
+  else if (current_token()->type == TK_RETURN)
+    return jump_statement();
   else
     return expr_statement();
 }

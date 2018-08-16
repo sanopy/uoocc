@@ -6,11 +6,12 @@ int expect(int a, int b) {
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
+  return 0;
 }
 
-int return_seven() { 7; }
+int return_seven() { return 7; }
 
-int add_three_args(int x, int y, int z) { x + y + z; }
+int add_three_args(int x, int y, int z) { return x + y + z; }
 
 int test_func() {
   expect(return_seven(), 7);
@@ -21,6 +22,7 @@ int test_func() {
   expect(3 * add_three_args(1, 2, 3), 18);
   expect(add_three_args(1, 2, 3) / 2, 3);
   expect(3 * add_three_args(1, 2, 3) / 2, 9);
+  return 0;
 }
 
 int main() {
@@ -30,5 +32,5 @@ int main() {
 
   printf("OK!\n");
 
-  0;
+  return 0;
 }

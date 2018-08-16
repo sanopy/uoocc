@@ -201,11 +201,11 @@ void codegen(Ast *p) {
       printf("\tcmpl %%edx, %%eax\n");
       char *s;
       if (p->type == AST_OP_LT)
-        s = allocate_string("setl");
+        s = "setl";
       else if (p->type == AST_OP_LE)
-        s = allocate_string("setle");
+        s = "setle";
       else if (p->type == AST_OP_EQUAL)
-        s = allocate_string("sete");
+        s = "sete";
       else
         s = allocate_string("setne");
       printf("\t%s %%al\n", s);
@@ -270,11 +270,6 @@ void codegen(Ast *p) {
       }
 
       codegen(p->statement);
-
-      printf("\tpopq %%rax\n");
-      printf("\tmovq %%rbp, %%rsp\n");
-      printf("\tpopq %%rbp\n");
-      printf("\tret\n");
       break;
     case AST_COMPOUND_STATEMENT:
       for (int i = 0; i < p->statements->size; i++)
@@ -322,5 +317,12 @@ void codegen(Ast *p) {
       printf(".L%d:\n", seq2);
       break;
     }
+    case AST_RETURN_STATEMENT:
+      codegen(p->left);
+      printf("\tpopq %%rax\n");
+      printf("\tmovq %%rbp, %%rsp\n");
+      printf("\tpopq %%rbp\n");
+      printf("\tret\n");
+      break;
   }
 }

@@ -6,12 +6,14 @@ int expect(int a, int b) {
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
+  return 0;
 }
 
 int test_number() {
   expect(0, 0);
   expect(2, 2);
   expect(9, 9);
+  return 0;
 }
 
 int test_additive_expr() {
@@ -21,6 +23,7 @@ int test_additive_expr() {
   expect(3 - 2 - 1, 0);
   expect(5 + 6 - 3, 8);
   expect(3 + 5 - 3 + 6, 11);
+  return 0;
 }
 
 int test_multiplicative_expr() {
@@ -31,12 +34,14 @@ int test_multiplicative_expr() {
   expect(1 / 2 + 3, 3);
   expect(1 + 2 / 3, 1);
   expect(1 * 2 + 3 + 4 * 5 * 6 / 7, 22);
+  return 0;
 }
 
 int test_primary_expr() {
   expect(6 - (5 - 4), 5);
   expect((1 + 2) * 3, 9);
   expect((1 + 2) * 3 + (4 + 5 + 6) * 2, 39);
+  return 0;
 }
 
 int test_unary_expr() {
@@ -55,6 +60,7 @@ int test_unary_expr() {
 
   expect(!0, 1);
   expect(!1, 0);
+  return 0;
 }
 
 int test_postfix_expr() {
@@ -64,6 +70,7 @@ int test_postfix_expr() {
   expect(a, 2);
   expect(a--, 2);
   expect(a, 1);
+  return 0;
 }
 
 int test_relational_expr() {
@@ -77,12 +84,14 @@ int test_relational_expr() {
   expect(5 >= 3, 1);
   expect(5 >= 5, 1);
   expect(3 >= 5, 0);
+  return 0;
 }
 
 int test_equality_expr() {
   expect(25 == 25, 1);
   expect(10 + 5 == 3 * 5, 1);
   expect(23 == 39, 0);
+  return 0;
 }
 
 int test_bitwise_expr() {
@@ -92,6 +101,7 @@ int test_bitwise_expr() {
   expect(5 & 10, 0);
   expect(5 | 10, 15);
   expect(5 ^ 10, 15);
+  return 0;
 }
 
 int test_logical_expr() {
@@ -101,6 +111,7 @@ int test_logical_expr() {
   expect(1 || 1, 1);
   expect(1 || 0, 1);
   expect(0 || 0, 0);
+  return 0;
 }
 
 int test_additive_ptr() {
@@ -118,6 +129,7 @@ int test_additive_ptr() {
   p = p + 3;
   expect(*(p - 2), 2);
   expect(p - a, 3);
+  return 0;
 }
 
 int swap(int *p, int *q) {
@@ -125,6 +137,7 @@ int swap(int *p, int *q) {
   tmp = *p;
   *p = *q;
   *q = tmp;
+  return 0;
 }
 
 int test_unary_ptr() {
@@ -154,6 +167,7 @@ int test_unary_ptr() {
   swap(&x, &y);
   expect(x, 9);
   expect(y, 15);
+  return 0;
 }
 
 int test_postfix_ptr() {
@@ -170,6 +184,7 @@ int test_postfix_ptr() {
   p = a + 3;
   expect(*(p--), 8);
   expect(*p, 4);
+  return 0;
 }
 
 int main() {
@@ -190,5 +205,5 @@ int main() {
 
   printf("OK!\n");
 
-  0;
+  return 0;
 }
