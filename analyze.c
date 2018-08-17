@@ -191,8 +191,11 @@ void semantic_analysis(Ast *p) {
       break;
     }
     case AST_CALL_FUNC:
-      for (int i = p->args->size - 1; i >= 0; i--)
-        semantic_analysis(vector_at(p->args, i));
+      for (int i = p->args->size - 1; i >= 0; i--) {
+        Ast **q = (Ast **)p->args->data + i;
+        semantic_analysis(*q);
+        *q = array_to_ptr(*q);
+      }
       break;
     case AST_DECL_FUNC:
       symbol_table = p->symbol_table;

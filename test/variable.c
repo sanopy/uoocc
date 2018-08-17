@@ -19,6 +19,16 @@ int expect_char(char a, char b) {
   return 0;
 }
 
+int expect_ptr(int *a, int *b) {
+  if (a != b) {
+    printf("Test %d: Failed\n", cnt++);
+    printf("  %p expected, but got %p\n", b, a);
+    exit(1);
+  } else
+    printf("Test %d: Passed\n", cnt++);
+  return 0;
+}
+
 int test_int_var() {
   int a;
   int b;
@@ -48,6 +58,7 @@ int test_char_var() {
   return 0;
 }
 
+int e[4];
 int test_array() {
   int a[2];
   int b[2][2];
@@ -81,6 +92,14 @@ int test_array() {
   expect(c[0] + c[1], 3);
   expect(d[0][0] + d[0][1] * d[1][0], 7);
   expect(1 [c], 2);
+
+  int f[4];
+  p = f;
+  expect_ptr(f, p);
+
+  p = e;
+  expect_ptr(e, p);
+
   return 0;
 }
 

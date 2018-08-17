@@ -23,6 +23,10 @@ int test_additive_expr() {
   expect(3 - 2 - 1, 0);
   expect(5 + 6 - 3, 8);
   expect(3 + 5 - 3 + 6, 11);
+
+  int x;
+  x = 0 - 999;
+  expect(1000 + x, 1);
   return 0;
 }
 

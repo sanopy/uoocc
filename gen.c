@@ -219,6 +219,9 @@ void codegen(Ast *p) {
         if (p->ctype->type == TYPE_CHAR) {
           printf("\tmovzbl %d(%%rbp), %%eax\n", -p->symbol_table_entry->offset);
           printf("\tpushq %%rax\n");
+        } else if (p->ctype->type == TYPE_INT) {
+          printf("\tmovl %d(%%rbp), %%eax\n", -p->symbol_table_entry->offset);
+          printf("\tpushq %%rax\n");
         } else
           printf("\tpushq %d(%%rbp)\n", -p->symbol_table_entry->offset);
       }
@@ -237,7 +240,10 @@ void codegen(Ast *p) {
         printf("\tpopq %%%s\n", reg[i]);
       }
       printf("\txor %%al, %%al\n");
+      printf("\tmovq %%rsp, %%r12\n");
+      printf("\tand $0xfffffffffffffff0, %%rsp\n");
       printf("\tcall %s\n", p->ident);
+      printf("\tmovq %%r12, %%rsp\n");
       printf("\tpushq %%rax\n");
       break;
     case AST_DECL_FUNC:
@@ -245,6 +251,7 @@ void codegen(Ast *p) {
       printf(".text\n");
       printf("%s:\n", p->ident);
       printf("\tpushq %%rbp\n");
+      printf("\tpushq %%r12\n");
       printf("\tmovq %%rsp, %%rbp\n");
       if (p->offset_from_bp > 0 && (p->offset_from_bp) % 16 == 0)
         printf("\tsub $%d, %%rsp\n", p->offset_from_bp);
@@ -321,6 +328,7 @@ void codegen(Ast *p) {
       codegen(p->left);
       printf("\tpopq %%rax\n");
       printf("\tmovq %%rbp, %%rsp\n");
+      printf("\tpopq %%r12\n");
       printf("\tpopq %%rbp\n");
       printf("\tret\n");
       break;
