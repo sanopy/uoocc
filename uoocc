@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+  echo "usage: $0 [/path/to/cfile] [/path/to/output]" 1>&2
+  exit 1
+fi
+
+if [ ! -e cc.out ]; then
+  make
+fi
+
+cat $1 | ./cc.out > tmp.s && gcc -static tmp.s -o $2 && rm -f tmp.s
