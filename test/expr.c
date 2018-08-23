@@ -64,6 +64,24 @@ int test_unary_expr() {
 
   expect(!0, 1);
   expect(!1, 0);
+
+  expect(sizeof(int), 4);
+  expect(sizeof(char), 1);
+  expect(sizeof(int *), 8);
+  expect(sizeof(char *), 8);
+
+  int arr[25][30][5];
+  int *p;
+
+  p = &arr[5][9][2];
+
+  expect(sizeof(arr), 15000);
+  expect(sizeof arr[10], 600);
+  expect(sizeof arr[5][20], 20);
+  expect(sizeof arr[5][20][1], 4);
+  expect(sizeof p, 8);
+  expect(sizeof *p, 4);
+
   return 0;
 }
 

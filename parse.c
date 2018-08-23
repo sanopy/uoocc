@@ -175,9 +175,13 @@ static Ast *postfix_expr(void) {
   return postfix_expr_tail(p);
 }
 
+static int is_type_specifier(Token *);
+static CType *type_name(void);
+
 /*
   <unary_expr> = <postfix_expr> | '++' <unary_expr> | '--' <unary_expr> |
-    '&' <unary_expr> | '*' <unary_expr> | '~' <unary_expr> | '!' <unary_expr>
+    '&' <unary_expr> | '*' <unary_expr> | '~' <unary_expr> | '!' <unary_expr> |
+    'sizeof' <unary_expr> | 'sizeof' '(' <type_name> ')'
 */
 static Ast *unary_expr(void) {
   Token *tk = current_token();
@@ -196,10 +200,20 @@ static Ast *unary_expr(void) {
     ast_op = AST_OP_B_NOT;
   else if (type == TK_L_NOT)
     ast_op = AST_OP_L_NOT;
+  else if (type == TK_SIZEOF)
+    ast_op = AST_OP_SIZEOF;
   else
     ast_op = -1;
 
-  if (ast_op != -1) {
+  if (ast_op == AST_OP_SIZEOF && second_token()->type == TK_LPAR &&
+      is_type_specifier(third_token())) {
+    next_token();
+    next_token();
+    CType *ctype = type_name();
+    expect_token(current_token(), TK_RPAR);
+    next_token();
+    return postfix_expr_tail(make_ast_int(sizeof_ctype(ctype)));
+  } else if (ast_op != -1) {
     next_token();
     Ast *left = unary_expr();
     Ast *p = make_ast_op(ast_op, left, NULL, tk);
@@ -449,9 +463,20 @@ static Ast *decl_function(Token *);
 //   <decl_function>
 static Ast *direct_declarator_tail(Token *ident, CType *ctype) {
   if (current_token()->type == TK_LBRA) {
-    ctype = make_ctype(TYPE_ARRAY, ctype);
     expect_token(next_token(), TK_NUM);
-    ctype->array_size = current_token()->number;
+    if (ctype->type != TYPE_ARRAY) {
+      ctype = make_ctype(TYPE_ARRAY, ctype);
+      ctype->array_size = current_token()->number;
+    } else {
+      CType *p = ctype, *q = ctype->ptrof;
+      while (q->type == TYPE_ARRAY) {
+        p = q;
+        q = q->ptrof;
+      }
+      CType *new = make_ctype(TYPE_ARRAY, q);
+      new->array_size = current_token()->number;
+      p->ptrof = new;
+    }
     expect_token(next_token(), TK_RBRA);
     next_token();
     return direct_declarator_tail(ident, ctype);
@@ -476,13 +501,13 @@ static Ast *declarator(CType *ctype) {
   return direct_declarator(ctype);
 }
 
-static int is_declaration_specifiers() {
-  int t = current_token()->type;
+static int is_type_specifier(Token *tk) {
+  int t = tk->type;
   return t == TK_INT || t == TK_CHAR;
 }
 
-// <declaration_specifiers> = 'int' | 'char'
-static CType *declaration_specifiers() {
+// <type_specifier> = 'int' | 'char'
+static CType *type_specifier(void) {
   // current token is 'int' or 'char' when enter this function.
   CType *ret;
   if (current_token()->type == TK_INT)
@@ -492,6 +517,12 @@ static CType *declaration_specifiers() {
 
   next_token();
   return ret;
+}
+
+// <declaration_specifiers> = <type_specifier>
+static CType *declaration_specifiers(void) {
+  // current token is 'int' or 'char' when enter this function.
+  return type_specifier();
 }
 
 // <declaration> = <declaration_specifiers> <declarator> ';'
@@ -505,6 +536,14 @@ static Ast *declaration(void) {
   return p;
 }
 
+// <type_name> = <type_specifier> <pointer_opt>
+static CType *type_name(void) {
+  CType *ret = type_specifier();
+  if (current_token()->type == TK_STAR)
+    ret = pointer(ret);
+  return ret;
+}
+
 // <decl_function> =
 //   '(' [ <declaration_specifiers> <pointer_opt> <ident>
 //   { ',' <declaration_specifiers> <pointer_opt> <ident> } ] ')'
@@ -515,9 +554,8 @@ static Ast *decl_function(Token *tk) {
   if (second_token()->type != TK_RPAR) {
     do {
       next_token();
-      if (!is_declaration_specifiers())
-        error_with_token(current_token(),
-                         "declaration_specifiers was expected");
+      if (!is_type_specifier(current_token()))
+        error_with_token(current_token(), "type_specifier was expected");
       CType *ctype = declaration_specifiers();
 
       if (current_token()->type == TK_STAR)
@@ -603,7 +641,7 @@ static Ast *compound_statement(void) {
 
   next_token();
   while (current_token()->type != TK_RCUR) {
-    if (is_declaration_specifiers())
+    if (is_type_specifier(current_token()))
       vector_push_back(p->statements, declaration());
     else
       vector_push_back(p->statements, statement());
@@ -663,8 +701,8 @@ Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    if (!is_declaration_specifiers())
-      error_with_token(current_token(), "declaration_specifiers was expected");
+    if (!is_type_specifier(current_token()))
+      error_with_token(current_token(), "type_specifier was expected");
     Ast *p = declarator(declaration_specifiers());
     if (p->type == AST_DECL_LOCAL_VAR) {
       p->type = AST_DECL_GLOBAL_VAR;

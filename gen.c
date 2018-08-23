@@ -122,7 +122,7 @@ void codegen(Ast *p) {
             make_ast_op(p->type == AST_OP_POST_INC ? AST_OP_ADD : AST_OP_SUB,
                         p->left, make_ast_int(1), p->token);
         Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
-        semantic_analysis(node);
+        node = semantic_analysis(node);
         emit_expr(node);
         printf("\tpopq %%rax\n");
       }
@@ -139,7 +139,7 @@ void codegen(Ast *p) {
             make_ast_op(p->type == AST_OP_PRE_INC ? AST_OP_ADD : AST_OP_SUB,
                         p->left, make_ast_int(1), p->token);
         Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
-        semantic_analysis(node);
+        node = semantic_analysis(node);
         emit_expr(node);
       }
       break;
@@ -170,9 +170,9 @@ void codegen(Ast *p) {
     case AST_OP_B_OR: {
       codegen(p->left);
       codegen(p->right);
-      char *op = p->type == AST_OP_B_AND
-                     ? "and"
-                     : p->type == AST_OP_B_XOR ? "xor" : "or";
+      char *op = p->type == AST_OP_B_AND ? "and" : p->type == AST_OP_B_XOR
+                                                       ? "xor"
+                                                       : "or";
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\t%s %%rdx, %%rax\n", op);

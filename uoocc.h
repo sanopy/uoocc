@@ -68,6 +68,7 @@ enum {
   TK_GE,      // >=
   TK_EQUAL,   // ==
   TK_NEQUAL,  // !=
+  TK_SIZEOF,  // sizeof
   TK_IF,      // if
   TK_ELSE,    // else
   TK_WHILE,   // while
@@ -95,6 +96,7 @@ extern TokenQueue token_queue;
 void init_token_queue(FILE *);
 Token *current_token(void);
 Token *second_token(void);
+Token *third_token(void);
 Token *next_token(void);
 
 // mylib.c
@@ -133,6 +135,7 @@ enum {
   AST_OP_L_AND,
   AST_OP_L_OR,
   AST_OP_ASSIGN,
+  AST_OP_SIZEOF,
   AST_VAR,
   AST_DECL_LOCAL_VAR,
   AST_DECL_GLOBAL_VAR,
@@ -193,7 +196,7 @@ Ast *make_ast_int(int);
 Vector *program(void);
 
 // analyze.c
-void semantic_analysis(Ast *);
+Ast *semantic_analysis(Ast *);
 int sizeof_ctype(CType *);
 
 // gen.c

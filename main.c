@@ -7,7 +7,7 @@ int main(void) {
   Vector *v = program();
 
   for (int i = 0; i < v->size; i++)
-    semantic_analysis(vector_at(v, i));
+    v->data[i] = semantic_analysis(vector_at(v, i));
 
   printf("\t.global main\n");
   emit_string();

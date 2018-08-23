@@ -205,7 +205,9 @@ void init_token_queue(FILE *fp) {
       now_col += strlen(s) - 1;
     } else if (isalpha(c) || c == '_') {
       char *s = read_ident(fp, c);
-      if (strcmp(s, "if") == 0)
+      if (strcmp(s, "sizeof") == 0)
+        vector_push_back(v, make_token(now_row, now_col, TK_SIZEOF, s));
+      else if (strcmp(s, "if") == 0)
         vector_push_back(v, make_token(now_row, now_col, TK_IF, s));
       else if (strcmp(s, "else") == 0)
         vector_push_back(v, make_token(now_row, now_col, TK_ELSE, s));
@@ -256,6 +258,10 @@ Token *current_token(void) {
 
 Token *second_token(void) {
   return vector_at(token_queue.vec, token_queue.idx + 1);
+}
+
+Token *third_token(void) {
+  return vector_at(token_queue.vec, token_queue.idx + 2);
 }
 
 Token *next_token(void) {

@@ -73,14 +73,14 @@ static CType *char_to_int(CType *ctype) {
     return ctype;
 }
 
-void semantic_analysis(Ast *p) {
+Ast *semantic_analysis(Ast *p) {
   if (p == NULL)
-    return;
+    return NULL;
 
   switch (p->type) {
     case AST_OP_ADD:
-      semantic_analysis(p->left);
-      semantic_analysis(p->right);
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
 
       p->left = array_to_ptr(p->left);
       p->right = array_to_ptr(p->right);
@@ -93,8 +93,8 @@ void semantic_analysis(Ast *p) {
         p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_SUB:
-      semantic_analysis(p->left);
-      semantic_analysis(p->right);
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
 
       p->left = array_to_ptr(p->left);
       p->right = array_to_ptr(p->right);
@@ -117,13 +117,13 @@ void semantic_analysis(Ast *p) {
     case AST_OP_B_OR:
     case AST_OP_L_AND:
     case AST_OP_L_OR:
-      semantic_analysis(p->left);
-      semantic_analysis(p->right);
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_B_NOT:
     case AST_OP_L_NOT:
-      semantic_analysis(p->left);
+      p->left = semantic_analysis(p->left);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_POST_INC:
@@ -132,24 +132,24 @@ void semantic_analysis(Ast *p) {
     case AST_OP_PRE_DEC:
       if (p->left == NULL || p->left->type != AST_VAR)
         error_with_token(p->token, "expression is not assignable");
-      semantic_analysis(p->left);
+      p->left = semantic_analysis(p->left);
       p->left = array_to_ptr(p->left);
       p->ctype = p->left->ctype;
       break;
     case AST_OP_REF:
-      semantic_analysis(p->left);
+      p->left = semantic_analysis(p->left);
       p->ctype = make_ctype(TYPE_PTR, p->left->ctype);
       break;
     case AST_OP_DEREF:
-      semantic_analysis(p->left);
+      p->left = semantic_analysis(p->left);
       p->left = array_to_ptr(p->left);
       if (p->left->ctype->type != TYPE_PTR || p->left->ctype->ptrof == NULL)
         error_with_token(p->token, "indirection requires pointer operand");
       p->ctype = p->left->ctype->ptrof;
       break;
     case AST_OP_ASSIGN:
-      semantic_analysis(p->left);
-      semantic_analysis(p->right);
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
       p->left = array_to_ptr(p->left);
       p->right = array_to_ptr(p->right);
       if (p->left->ctype->type == TYPE_CHAR &&
@@ -160,6 +160,10 @@ void semantic_analysis(Ast *p) {
       else if (p->left->ctype->type != p->right->ctype->type)
         error_with_token(p->token, "expression is not assignable");
       p->ctype = p->left->ctype;
+      break;
+    case AST_OP_SIZEOF:
+      p->left = semantic_analysis(p->left);
+      return make_ast_int(sizeof_ctype(p->left->ctype));
       break;
     case AST_VAR:
       if (symboltable_get(symbol_table, p->ident) ==
@@ -193,7 +197,7 @@ void semantic_analysis(Ast *p) {
     case AST_CALL_FUNC:
       for (int i = p->args->size - 1; i >= 0; i--) {
         Ast **q = (Ast **)p->args->data + i;
-        semantic_analysis(*q);
+        *q = semantic_analysis(*q);
         *q = array_to_ptr(*q);
       }
       break;
@@ -203,31 +207,31 @@ void semantic_analysis(Ast *p) {
       if (p->args->size > 6)
         error_with_token(p->token, "too many arguments");
       for (int i = 0; i < p->args->size; i++)
-        semantic_analysis(vector_at(p->args, i));
-      semantic_analysis(p->statement);
+        p->args->data[i] = semantic_analysis(vector_at(p->args, i));
+      p->statement = semantic_analysis(p->statement);
       symbol_table = symbol_table->next;
       p->offset_from_bp = offset_from_bp;
       break;
     case AST_COMPOUND_STATEMENT:
       for (int i = 0; i < p->statements->size; i++)
-        semantic_analysis(vector_at(p->statements, i));
+        p->statements->data[i] = semantic_analysis(vector_at(p->statements, i));
       break;
     case AST_IF_STATEMENT:
-      semantic_analysis(p->cond);
-      semantic_analysis(p->left);
-      semantic_analysis(p->right);
+      p->cond = semantic_analysis(p->cond);
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
       break;
     case AST_FOR_STATEMENT:
-      semantic_analysis(p->init);
-      semantic_analysis(p->step);
+      p->init = semantic_analysis(p->init);
+      p->step = semantic_analysis(p->step);
     case AST_WHILE_STATEMENT:
-      semantic_analysis(p->cond);
-      semantic_analysis(p->statement);
+      p->cond = semantic_analysis(p->cond);
+      p->statement = semantic_analysis(p->statement);
       break;
     case AST_RETURN_STATEMENT:
-      semantic_analysis(p->left);
+      p->left = semantic_analysis(p->left);
       break;
   }
 
-  return;
+  return p;
 }
