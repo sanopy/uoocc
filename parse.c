@@ -7,6 +7,7 @@ CType *make_ctype(int type, CType *ptrof) {
   CType *p = (CType *)malloc(sizeof(CType));
   p->type = type;
   p->ptrof = ptrof;
+  p->array_size = 0;
   return p;
 }
 
@@ -160,11 +161,10 @@ static Ast *postfix_expr_tail(Ast *left) {
     return postfix_expr_tail(p);
   } else if (type == TK_LBRA) {
     next_token();
-    Ast *add = make_ast_op(AST_OP_ADD, left, expr(), tk);
-    Ast *deref = make_ast_op(AST_OP_DEREF, add, NULL, tk);
+    Ast *p = make_ast_op(AST_SUBSCRIPT, left, expr(), tk);
     expect_token(current_token(), TK_RBRA);
     next_token();
-    return postfix_expr_tail(deref);
+    return postfix_expr_tail(p);
   } else {
     return left;
   }
@@ -678,7 +678,8 @@ static Ast *compound_statement(void) {
 // <expr_statement> = <expr_opt> ';'
 static Ast *expr_statement(void) {
   if (current_token()->type != TK_SEMI) {
-    Ast *p = expr();
+    Ast *p = make_ast_statement(AST_EXPR_STATEMENT);
+    p->expr = expr();
     expect_token(current_token(), TK_SEMI);
     next_token();
     return p;
@@ -694,12 +695,12 @@ static Ast *jump_statement(void) {
   Ast *p = make_ast_statement(AST_RETURN_STATEMENT);
   next_token();
   if (current_token()->type != TK_SEMI) {
-    p->left = expr();
+    p->expr = expr();
     expect_token(current_token(), TK_SEMI);
     next_token();
   } else {
     next_token();
-    p->left = NULL;
+    p->expr = NULL;
   }
   return p;
 }

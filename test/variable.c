@@ -81,11 +81,17 @@ int test_array() {
   int c[2];
   int d[2][2];
 
+  expect_ptr(d[0], *d);
+  expect_ptr(d[1], *(d + 2));
+  expect_ptr(&d[1][1], *(d + 2) + 1);
+
   c[0] = 1;
   c[1] = 2;
   d[0][0] = 1;
   d[0][1] = 2;
   d[1][0] = 3;
+
+  expect(c != &d[1][0], 1);
 
   expect(c[0], 1);
   expect(c[1], 2);

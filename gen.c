@@ -28,6 +28,8 @@ static int get_shift_length(CType *ctype) {
     return 0;
   else if (ctype->ptrof->type == TYPE_INT)
     return 2;
+  else if (ctype->ptrof->type == TYPE_ARRAY)
+    return get_shift_length(ctype->ptrof);
   else
     return 3;
 }
@@ -71,15 +73,13 @@ void codegen(Ast *p) {
     case AST_OP_DIV:
       codegen(p->left);
       codegen(p->right);
-      printf("\tpopq %%rbx\n");
+      printf("\tpopq %%rdi\n");
       printf("\tpopq %%rax\n");
-      printf("\tand $0xffffffff, %%ebx\n");
-      printf("\tand $0xffffffff, %%eax\n");
       if (p->type == AST_OP_MUL)
-        printf("\tmul %%rbx\n");
+        printf("\tmul %%rdi\n");
       else {
         printf("\txor %%rdx, %%rdx\n");
-        printf("\tdiv %%rbx\n");
+        printf("\tdiv %%rdi\n");
       }
       printf("\tpushq %%rax\n");
       break;
@@ -101,6 +101,7 @@ void codegen(Ast *p) {
       emit_lvalue(p->left);
       printf("\tpopq %%rax\n");
       printf("\tpushq (%%rax)\n");
+      // TODO: char type
       if (ltype->type == TYPE_INT) {
         printf("\t%s (%%rax)\n", p->type == AST_OP_POST_INC ? "incl" : "decl");
       } else {
@@ -115,6 +116,7 @@ void codegen(Ast *p) {
       break;
     case AST_OP_PRE_INC:
     case AST_OP_PRE_DEC:
+      // TODO: char type
       if (ltype->type == TYPE_INT) {
         emit_lvalue(p->left);
         printf("\tpopq %%rax\n");
@@ -140,7 +142,7 @@ void codegen(Ast *p) {
       printf("\tpopq %%rax\n");
       printf("\tcmpq $0, %%rax\n");
       printf("\tsete %%al\n");
-      printf("\tmovzbl %%al, %%eax\n");
+      printf("\tmovzbq %%al, %%rax\n");
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_REF:
@@ -149,7 +151,13 @@ void codegen(Ast *p) {
     case AST_OP_DEREF:
       codegen(p->left);
       printf("\tpopq %%rax\n");
-      printf("\tpushq (%%rax)\n");
+      if (p->ctype->type == TYPE_CHAR)
+        printf("\tmovsbq (%%rax), %%rax\n");
+      else if (p->ctype->type == TYPE_INT)
+        printf("\tmovslq (%%rax), %%rax\n");
+      else
+        printf("\tmovq (%%rax), %%rax\n");
+      printf("\tpushq %%rax\n");
       break;
     case AST_OP_B_AND:
     case AST_OP_B_XOR:
@@ -195,7 +203,7 @@ void codegen(Ast *p) {
       codegen(p->right);
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
-      printf("\tcmpl %%edx, %%eax\n");
+      printf("\tcmpq %%rdx, %%rax\n");
       char *s;
       if (p->type == AST_OP_LT)
         s = "setl";
@@ -204,20 +212,27 @@ void codegen(Ast *p) {
       else if (p->type == AST_OP_EQUAL)
         s = "sete";
       else
-        s = allocate_string("setne");
+        s = "setne";
       printf("\t%s %%al\n", s);
-      printf("\tmovzbl %%al, %%eax\n");
+      printf("\tmovzbq %%al, %%rax\n");
       printf("\tpushq %%rax\n");
       break;
     case AST_VAR:
       if (p->symbol_table_entry->is_global) {
-        printf("\tpushq %s(%%rip)\n", p->symbol_table_entry->ident);
-      } else {
         if (p->ctype->type == TYPE_CHAR) {
-          printf("\tmovzbl %d(%%rbp), %%eax\n", -p->symbol_table_entry->offset);
+          printf("\tmovsbq %s(%%rip), %%rax\n", p->symbol_table_entry->ident);
           printf("\tpushq %%rax\n");
         } else if (p->ctype->type == TYPE_INT) {
-          printf("\tmovl %d(%%rbp), %%eax\n", -p->symbol_table_entry->offset);
+          printf("\tmovslq %s(%%rip), %%rax\n", p->symbol_table_entry->ident);
+          printf("\tpushq %%rax\n");
+        } else
+          printf("\tpushq %s(%%rip)\n", p->symbol_table_entry->ident);
+      } else {
+        if (p->ctype->type == TYPE_CHAR) {
+          printf("\tmovsbq %d(%%rbp), %%rax\n", -p->symbol_table_entry->offset);
+          printf("\tpushq %%rax\n");
+        } else if (p->ctype->type == TYPE_INT) {
+          printf("\tmovslq %d(%%rbp), %%rax\n", -p->symbol_table_entry->offset);
           printf("\tpushq %%rax\n");
         } else
           printf("\tpushq %d(%%rbp)\n", -p->symbol_table_entry->offset);
@@ -232,8 +247,8 @@ void codegen(Ast *p) {
       for (int i = p->args->size - 1; i >= 0; i--)
         codegen(vector_at(p->args, i));
 
-      for (int i = 1; i <= (p->args->size > 6 ? 6 : p->args->size); i++) {
-        char *reg[] = {"", "rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+      for (int i = 0; i < (p->args->size > 6 ? 6 : p->args->size); i++) {
+        char *reg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
         printf("\tpopq %%%s\n", reg[i]);
       }
       printf("\txor %%al, %%al\n");
@@ -279,6 +294,12 @@ void codegen(Ast *p) {
       for (int i = 0; i < p->statements->size; i++)
         codegen(vector_at(p->statements, i));
       break;
+    case AST_EXPR_STATEMENT:
+      if (p->expr != NULL) {
+        codegen(p->expr);
+        printf("\tpopq %%rax\n");
+      }
+      break;
     case AST_IF_STATEMENT:
       codegen(p->cond);
       printf("\tpopq %%rax\n");
@@ -310,6 +331,7 @@ void codegen(Ast *p) {
     case AST_FOR_STATEMENT: {
       int seq1 = get_sequence_num(), seq2 = get_sequence_num();
       codegen(p->init);
+      printf("\tpopq %%rax\n");
       printf(".L%d:\n", seq1);
       codegen(p->cond);
       printf("\tpopq %%rax\n");
@@ -317,13 +339,16 @@ void codegen(Ast *p) {
       printf("\tjz .L%d\n", seq2);
       codegen(p->statement);
       codegen(p->step);
+      printf("\tpopq %%rax\n");
       printf("\tjmp .L%d\n", seq1);
       printf(".L%d:\n", seq2);
       break;
     }
     case AST_RETURN_STATEMENT:
-      codegen(p->left);
-      printf("\tpopq %%rax\n");
+      if (p->expr != NULL) {
+        codegen(p->expr);
+        printf("\tpopq %%rax\n");
+      }
       printf("\tmovq %%rbp, %%rsp\n");
       printf("\tpopq %%r12\n");
       printf("\tpopq %%rbp\n");

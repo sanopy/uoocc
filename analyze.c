@@ -36,6 +36,13 @@ int sizeof_ctype(CType *ctype) {
     assert(0);
 }
 
+static int get_array_size(CType *ctype) {
+  if (ctype->type == TYPE_PTR || ctype->type == TYPE_ARRAY)
+    return get_array_size(ctype->ptrof) + ctype->array_size;
+  else
+    return 0;
+}
+
 int offset_from_bp;
 static int get_offset_from_bp(CType *ctype) {
   int stack_size = sizeof_ctype(ctype);
@@ -59,8 +66,7 @@ static Ast *array_to_ptr(Ast *p) {
   CType *ctype = p->ctype;
   if (ctype->type == TYPE_ARRAY) {
     Ast *new = make_ast_op(AST_OP_REF, p, NULL, NULL);
-    new->ctype = make_ctype(TYPE_PTR, ctype->ptrof);
-    return new;
+    return semantic_analysis(new);
   } else {
     return p;
   }
@@ -121,11 +127,14 @@ Ast *semantic_analysis(Ast *p) {
     case AST_OP_L_OR:
       p->left = semantic_analysis(p->left);
       p->right = semantic_analysis(p->right);
+      p->left = array_to_ptr(p->left);
+      p->right = array_to_ptr(p->right);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_B_NOT:
     case AST_OP_L_NOT:
       p->left = semantic_analysis(p->left);
+      p->left = array_to_ptr(p->left);
       p->ctype = char_to_int(p->left->ctype);
       break;
     case AST_OP_POST_INC:
@@ -140,7 +149,10 @@ Ast *semantic_analysis(Ast *p) {
       break;
     case AST_OP_REF:
       p->left = semantic_analysis(p->left);
-      p->ctype = make_ctype(TYPE_PTR, p->left->ctype);
+      if (p->left->ctype->type == TYPE_ARRAY)
+        p->ctype = make_ctype(TYPE_PTR, p->left->ctype->ptrof);
+      else
+        p->ctype = make_ctype(TYPE_PTR, p->left->ctype);
       break;
     case AST_OP_DEREF:
       p->left = semantic_analysis(p->left);
@@ -177,6 +189,28 @@ Ast *semantic_analysis(Ast *p) {
         p->symbol_table_entry = symboltable_get(symbol_table, p->ident);
         p->ctype = p->symbol_table_entry->ctype;
       }
+      break;
+    case AST_SUBSCRIPT:
+      p->left = semantic_analysis(p->left);
+      p->right = semantic_analysis(p->right);
+      CType *ltype = p->left->ctype;
+      CType *rtype = p->right->ctype;
+      Ast *add;
+      if (ltype->ptrof != NULL && ltype->ptrof->type == TYPE_ARRAY) {
+        Ast *size = make_ast_int(get_array_size(ltype->ptrof));
+        Ast *mul = make_ast_op(AST_OP_MUL, size, p->right, p->token);
+        add = make_ast_op(AST_OP_ADD, p->left, mul, p->token);
+      } else if (rtype->ptrof != NULL && rtype->ptrof->type == TYPE_ARRAY) {
+        Ast *size = make_ast_int(get_array_size(rtype->ptrof));
+        Ast *mul = make_ast_op(AST_OP_MUL, p->left, size, p->token);
+        add = make_ast_op(AST_OP_ADD, p->right, mul, p->token);
+      } else
+        add = make_ast_op(AST_OP_ADD, p->left, p->right, p->token);
+
+      Ast *deref = make_ast_op(AST_OP_DEREF, add, NULL, p->token);
+      deref = semantic_analysis(deref);
+      // fprintf(stderr, "ctype = %d\n", deref->ctype->type);
+      return deref;
       break;
     case AST_DECL_LOCAL_VAR: {
       SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 0);
@@ -218,6 +252,9 @@ Ast *semantic_analysis(Ast *p) {
       for (int i = 0; i < p->statements->size; i++)
         p->statements->data[i] = semantic_analysis(vector_at(p->statements, i));
       break;
+    case AST_EXPR_STATEMENT:
+      p->expr = semantic_analysis(p->expr);
+      break;
     case AST_IF_STATEMENT:
       p->cond = semantic_analysis(p->cond);
       p->left = semantic_analysis(p->left);
@@ -231,7 +268,7 @@ Ast *semantic_analysis(Ast *p) {
       p->statement = semantic_analysis(p->statement);
       break;
     case AST_RETURN_STATEMENT:
-      p->left = semantic_analysis(p->left);
+      p->expr = semantic_analysis(p->expr);
       break;
   }
 

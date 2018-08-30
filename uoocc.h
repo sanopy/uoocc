@@ -141,11 +141,13 @@ enum {
   AST_OP_ASSIGN,
   AST_OP_SIZEOF,
   AST_VAR,
+  AST_SUBSCRIPT,
   AST_DECL_LOCAL_VAR,
   AST_DECL_GLOBAL_VAR,
   AST_CALL_FUNC,
   AST_DECL_FUNC,
   AST_COMPOUND_STATEMENT,
+  AST_EXPR_STATEMENT,
   AST_IF_STATEMENT,
   AST_WHILE_STATEMENT,
   AST_FOR_STATEMENT,
@@ -189,6 +191,7 @@ typedef struct _Ast {
   struct _Ast *cond;
   struct _Ast *init;
   struct _Ast *step;
+  struct _Ast *expr;  // [expr, return] statement
   struct _Ast *statement;
 } Ast;
 
