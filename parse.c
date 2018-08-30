@@ -272,18 +272,42 @@ static Ast *additive_expr(Ast *unary) {
 }
 
 /*
-  <relational_expr> = <additive_expr> <relational_expr_tail>
-  <relational_expr_tail> = ε | '<' <additive_expr> <relational_expr_tail> |
-    '<=' <additive_expr> <relational_expr_tail> |
-    '>'  <additive_expr> <relational_expr_tail> |
-    '>=' <additive_expr> <relational_expr_tail>
+  <shift_expr> = <additive_expr> <shift_expr_tail>
+  <shift_expr_tail> = ε | '<<' <additive_expr> <shift_expr_tail> |
+    '>>' <additive_expr> <shift_expr_tail>
+*/
+static Ast *shift_expr_tail(Ast *left) {
+  Token *tk = current_token();
+  int type = tk->type;
+  if (type == TK_LSHIFT || type == TK_RSHIFT) {
+    next_token();
+    Ast *right = additive_expr(NULL);
+    int ast_op = type == TK_LSHIFT ? AST_OP_LSHIFT : AST_OP_RSHIFT;
+    Ast *p = make_ast_op(ast_op, left, right, tk);
+    return shift_expr_tail(p);
+  } else {
+    return left;
+  }
+}
+
+static Ast *shift_expr(Ast *unary) {
+  Ast *p = additive_expr(unary);
+  return shift_expr_tail(p);
+}
+
+/*
+  <relational_expr> = <shift_expr> <relational_expr_tail>
+  <relational_expr_tail> = ε | '<' <shift_expr> <relational_expr_tail> |
+    '<=' <shift_expr> <relational_expr_tail> |
+    '>'  <shift_expr> <relational_expr_tail> |
+    '>=' <shift_expr> <relational_expr_tail>
 */
 static Ast *relational_expr_tail(Ast *left) {
   Token *tk = current_token();
   int type = tk->type;
   if (type == TK_LT || type == TK_LE || type == TK_GT || type == TK_GE) {
     next_token();
-    Ast *p, *right = additive_expr(NULL);
+    Ast *p, *right = shift_expr(NULL);
     if (type == TK_LT)
       p = make_ast_op(AST_OP_LT, left, right, tk);
     else if (type == TK_LE)
@@ -299,7 +323,7 @@ static Ast *relational_expr_tail(Ast *left) {
 }
 
 static Ast *relational_expr(Ast *unary) {
-  Ast *p = additive_expr(unary);
+  Ast *p = shift_expr(unary);
   return relational_expr_tail(p);
 }
 

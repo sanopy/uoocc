@@ -95,6 +95,19 @@ int test_postfix_expr() {
   return 0;
 }
 
+int test_shift_expr() {
+  expect(1 << 1, 2);
+  expect(1 << 2, 4);
+  expect(1 << 3, 8);
+  expect(1 << 10, 1024);
+
+  expect(1024 >> 1, 512);
+  expect(1024 >> 2, 256);
+  expect(1024 >> 3, 128);
+  expect(1024 >> 10, 1);
+  return 0;
+}
+
 int test_relational_expr() {
   expect(3 < 5, 1);
   expect(5 < 5, 0);
@@ -218,6 +231,7 @@ int main() {
   test_primary_expr();
   test_unary_expr();
   test_postfix_expr();
+  test_shift_expr();
   test_relational_expr();
   test_equality_expr();
   test_bitwise_expr();

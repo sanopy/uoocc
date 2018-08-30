@@ -48,6 +48,8 @@ enum {
   TK_B_OR,    // |
   TK_B_XOR,   // ^
   TK_B_NOT,   // ~
+  TK_LSHIFT,  // <<
+  TK_RSHIFT,  // >>
   TK_L_AND,   // &&
   TK_L_OR,    // ||
   TK_L_NOT,   // !
@@ -125,6 +127,8 @@ enum {
   AST_OP_DEREF,
   AST_OP_B_NOT,
   AST_OP_L_NOT,
+  AST_OP_LSHIFT,
+  AST_OP_RSHIFT,
   AST_OP_LT,
   AST_OP_LE,
   AST_OP_EQUAL,

@@ -115,6 +115,8 @@ Ast *semantic_analysis(Ast *p) {
     case AST_OP_B_AND:
     case AST_OP_B_XOR:
     case AST_OP_B_OR:
+    case AST_OP_LSHIFT:
+    case AST_OP_RSHIFT:
     case AST_OP_L_AND:
     case AST_OP_L_OR:
       p->left = semantic_analysis(p->left);

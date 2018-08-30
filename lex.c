@@ -170,7 +170,11 @@ void init_token_queue(FILE *fp) {
       vector_push_back(
           v, make_token(now_row, now_col, TK_RBRA, allocate_string("]")));
     else if (c == '<') {
-      if ((c = getc(fp)) == '=') {
+      if ((c = getc(fp)) == '<') {
+        now_col++;
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_LSHIFT, allocate_string("<<")));
+      } else if (c == '=') {
         now_col++;
         vector_push_back(
             v, make_token(now_row, now_col, TK_LE, allocate_string("<=")));
@@ -180,7 +184,11 @@ void init_token_queue(FILE *fp) {
             v, make_token(now_row, now_col, TK_LT, allocate_string("<")));
       }
     } else if (c == '>') {
-      if ((c = getc(fp)) == '=') {
+      if ((c = getc(fp)) == '>') {
+        now_col++;
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_RSHIFT, allocate_string(">>")));
+      } else if (c == '=') {
         now_col++;
         vector_push_back(
             v, make_token(now_row, now_col, TK_GE, allocate_string(">=")));

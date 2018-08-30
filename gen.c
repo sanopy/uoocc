@@ -32,11 +32,20 @@ static int get_shift_length(CType *ctype) {
     return 3;
 }
 
-static void emit_expr(Ast *p) {
+void codegen(Ast *p) {
+  if (p == NULL)
+    return;
+
   CType *ltype = p->left == NULL ? NULL : p->left->ctype;
   CType *rtype = p->right == NULL ? NULL : p->right->ctype;
 
   switch (p->type) {
+    case AST_INT:
+      printf("\tpushq $%d\n", p->ival);
+      break;
+    case AST_STR:
+      printf("\tpushq $.L%d\n", p->label);
+      break;
     case AST_OP_ADD:
     case AST_OP_SUB:
       codegen(p->left);
@@ -87,29 +96,6 @@ static void emit_expr(Ast *p) {
         printf("\tmovl %%edi, (%%rax)\n");
       printf("\tpushq %%rdi\n");
       break;
-  }
-}
-
-void codegen(Ast *p) {
-  if (p == NULL)
-    return;
-
-  CType *ltype = p->left == NULL ? NULL : p->left->ctype;
-
-  switch (p->type) {
-    case AST_INT:
-      printf("\tpushq $%d\n", p->ival);
-      break;
-    case AST_STR:
-      printf("\tpushq $.L%d\n", p->label);
-      break;
-    case AST_OP_ADD:
-    case AST_OP_SUB:
-    case AST_OP_MUL:
-    case AST_OP_DIV:
-    case AST_OP_ASSIGN:
-      emit_expr(p);
-      break;
     case AST_OP_POST_INC:
     case AST_OP_POST_DEC:
       emit_lvalue(p->left);
@@ -123,7 +109,7 @@ void codegen(Ast *p) {
                         p->left, make_ast_int(1), p->token);
         Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
         node = semantic_analysis(node);
-        emit_expr(node);
+        codegen(node);
         printf("\tpopq %%rax\n");
       }
       break;
@@ -140,7 +126,7 @@ void codegen(Ast *p) {
                         p->left, make_ast_int(1), p->token);
         Ast *node = make_ast_op(AST_OP_ASSIGN, p->left, right, p->token);
         node = semantic_analysis(node);
-        emit_expr(node);
+        codegen(node);
       }
       break;
     case AST_OP_B_NOT:
@@ -170,9 +156,9 @@ void codegen(Ast *p) {
     case AST_OP_B_OR: {
       codegen(p->left);
       codegen(p->right);
-      char *op = p->type == AST_OP_B_AND ? "and" : p->type == AST_OP_B_XOR
-                                                       ? "xor"
-                                                       : "or";
+      char *op = p->type == AST_OP_B_AND
+                     ? "and"
+                     : p->type == AST_OP_B_XOR ? "xor" : "or";
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\t%s %%rdx, %%rax\n", op);
@@ -190,6 +176,17 @@ void codegen(Ast *p) {
       printf("\t%s %%rdx, %%rax\n", op);
       printf("\tpushq %%rax\n");
       break;
+    case AST_OP_LSHIFT:
+    case AST_OP_RSHIFT: {
+      codegen(p->left);
+      codegen(p->right);
+      char *op = p->type == AST_OP_LSHIFT ? "salq" : "sarq";
+      printf("\tpopq %%rcx\n");
+      printf("\tpopq %%rax\n");
+      printf("\t%s %%cl, %%rax\n", op);
+      printf("\tpushq %%rax\n");
+      break;
+    }
     case AST_OP_LT:
     case AST_OP_LE:
     case AST_OP_EQUAL:
