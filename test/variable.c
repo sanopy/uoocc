@@ -67,11 +67,14 @@ int test_array() {
   *(a + 1) = 2;
   **b = 3;
   *(*(b + 0) + 1) = 4;
+  *(*(b + 1) + 1) = 5;
 
   expect(*a, 1);
   expect(*(a + 1), 2);
   expect(**b, 3);
   expect(*(*(b + 0) + 1), 4);
+  expect(*(*(b + 1) + 1), b[1][1]);
+  expect(*(*(b + 1) + 1), 5);
 
   int *p;
   p = a;
@@ -82,8 +85,8 @@ int test_array() {
   int d[2][2];
 
   expect_ptr(d[0], *d);
-  expect_ptr(d[1], *(d + 2));
-  expect_ptr(&d[1][1], *(d + 2) + 1);
+  expect_ptr(d[1], *(d + 1));
+  expect_ptr(&d[1][1], *(d + 1) + 1);
 
   c[0] = 1;
   c[1] = 2;

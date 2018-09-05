@@ -5,7 +5,7 @@
 Map *symbol_table;
 
 static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int is_global) {
-  SymbolTableEntry *p = (SymbolTableEntry *)malloc(sizeof(SymbolTableEntry));
+  SymbolTableEntry *p = malloc(sizeof(SymbolTableEntry));
   p->ctype = ctype;
   p->is_global = is_global;
   return p;
@@ -34,13 +34,6 @@ int sizeof_ctype(CType *ctype) {
     return sizeof_ctype(ctype->ptrof) * ctype->array_size;
   } else
     assert(0);
-}
-
-static int get_array_size(CType *ctype) {
-  if (ctype->type == TYPE_PTR || ctype->type == TYPE_ARRAY)
-    return get_array_size(ctype->ptrof) + ctype->array_size;
-  else
-    return 0;
 }
 
 int offset_from_bp;
@@ -193,24 +186,9 @@ Ast *semantic_analysis(Ast *p) {
     case AST_SUBSCRIPT:
       p->left = semantic_analysis(p->left);
       p->right = semantic_analysis(p->right);
-      CType *ltype = p->left->ctype;
-      CType *rtype = p->right->ctype;
-      Ast *add;
-      if (ltype->ptrof != NULL && ltype->ptrof->type == TYPE_ARRAY) {
-        Ast *size = make_ast_int(get_array_size(ltype->ptrof));
-        Ast *mul = make_ast_op(AST_OP_MUL, size, p->right, p->token);
-        add = make_ast_op(AST_OP_ADD, p->left, mul, p->token);
-      } else if (rtype->ptrof != NULL && rtype->ptrof->type == TYPE_ARRAY) {
-        Ast *size = make_ast_int(get_array_size(rtype->ptrof));
-        Ast *mul = make_ast_op(AST_OP_MUL, p->left, size, p->token);
-        add = make_ast_op(AST_OP_ADD, p->right, mul, p->token);
-      } else
-        add = make_ast_op(AST_OP_ADD, p->left, p->right, p->token);
-
+      Ast *add = make_ast_op(AST_OP_ADD, p->left, p->right, p->token);
       Ast *deref = make_ast_op(AST_OP_DEREF, add, NULL, p->token);
-      deref = semantic_analysis(deref);
-      // fprintf(stderr, "ctype = %d\n", deref->ctype->type);
-      return deref;
+      return semantic_analysis(deref);
       break;
     case AST_DECL_LOCAL_VAR: {
       SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 0);

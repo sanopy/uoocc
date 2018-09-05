@@ -23,6 +23,13 @@ static void emit_lvalue(Ast *p) {
   }
 }
 
+static int get_array_size(CType *ctype) {
+  if (ctype->type == TYPE_PTR || ctype->type == TYPE_ARRAY)
+    return get_array_size(ctype->ptrof) + ctype->array_size;
+  else
+    return 0;
+}
+
 static int get_shift_length(CType *ctype) {
   if (ctype->ptrof->type == TYPE_CHAR)
     return 0;
@@ -52,12 +59,20 @@ void codegen(Ast *p) {
     case AST_OP_SUB:
       codegen(p->left);
       codegen(p->right);
-      printf("\tpopq %%rdx\n");
-      printf("\tpopq %%rax\n");
+      printf("\tpopq %%rdx\n");  // right
+      printf("\tpopq %%rax\n");  // left
       if ((ltype->type == TYPE_INT || ltype->type == TYPE_CHAR) &&
           (rtype->type == TYPE_INT || rtype->type == TYPE_CHAR))
         printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
-      else if (ltype->type == TYPE_PTR && rtype->type == TYPE_PTR) {
+      else if (ltype->ptrof != NULL && ltype->ptrof->type == TYPE_ARRAY) {
+        printf("\timul $%d, %%rdx\n", get_array_size(ltype->ptrof));
+        printf("\tsalq $%d, %%rdx\n", get_shift_length(ltype));
+        printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
+      } else if (rtype->ptrof != NULL && rtype->ptrof->type == TYPE_ARRAY) {
+        printf("\timul $%d, %%rax\n", get_array_size(rtype->ptrof));
+        printf("\tsalq $%d, %%rax\n", get_shift_length(rtype));
+        printf("\t%s %%rdx, %%rax\n", p->type == AST_OP_ADD ? "addq" : "subq");
+      } else if (ltype->type == TYPE_PTR && rtype->type == TYPE_PTR) {
         printf("\tsubq %%rdx, %%rax\n");
         printf("\tsarq $%d, %%rax\n", get_shift_length(ltype));
       } else {
@@ -164,9 +179,9 @@ void codegen(Ast *p) {
     case AST_OP_B_OR: {
       codegen(p->left);
       codegen(p->right);
-      char *op = p->type == AST_OP_B_AND
-                     ? "and"
-                     : p->type == AST_OP_B_XOR ? "xor" : "or";
+      char *op = p->type == AST_OP_B_AND ? "and" : p->type == AST_OP_B_XOR
+                                                       ? "xor"
+                                                       : "or";
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\t%s %%rdx, %%rax\n", op);
