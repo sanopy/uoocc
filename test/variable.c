@@ -1,3 +1,8 @@
+/**
+ * @file variable.c
+ * @author uoo38
+ */
+
 int cnt;
 int expect(int a, int b) {
   if (a != b) {

@@ -83,6 +83,51 @@ void init_token_queue(FILE *fp) {
       continue;
     }
 
+    if (c == '/') {
+      char _c;
+      if ((_c = getc(fp)) == '/') {  // skip liner comment
+        while ((c = getc(fp)) != '\n')
+          ;
+        now_row++;
+        now_col = 1;
+        continue;
+      } else if (_c == '*') {  // skip block comment
+        Token *tk =
+            make_token(now_row, now_col, TK_MISC, allocate_string("/*"));
+
+        char c2;
+        c = getc(fp);
+        c2 = getc(fp);
+
+        now_col += 2;
+        if (c == '\n') {
+          now_row++;
+          now_col = 1;
+        } else
+          now_col++;
+        if (c2 == '\n') {
+          now_row++;
+          now_col = 1;
+        } else
+          now_col++;
+
+        while (!(c == '*' && c2 == '/') && c2 != EOF) {
+          c = c2;
+          c2 = getc(fp);
+          if (c2 == '\n') {
+            now_row++;
+            now_col = 1;
+          } else
+            now_col++;
+        }
+        if (c2 == EOF)
+          error_with_token(tk, "unterminated comment");
+        continue;
+      } else {
+        ungetc(_c, fp);
+      }
+    }
+
     if (c == '+') {
       if ((c = getc(fp)) == '+') {
         now_col++;

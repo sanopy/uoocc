@@ -1,3 +1,5 @@
+// statement.c
+
 int cnt;
 int expect(int a, int b) {
   if (a != b) {

@@ -179,9 +179,9 @@ void codegen(Ast *p) {
     case AST_OP_B_OR: {
       codegen(p->left);
       codegen(p->right);
-      char *op = p->type == AST_OP_B_AND ? "and" : p->type == AST_OP_B_XOR
-                                                       ? "xor"
-                                                       : "or";
+      char *op = p->type == AST_OP_B_AND
+                     ? "and"
+                     : p->type == AST_OP_B_XOR ? "xor" : "or";
       printf("\tpopq %%rdx\n");
       printf("\tpopq %%rax\n");
       printf("\t%s %%rdx, %%rax\n", op);

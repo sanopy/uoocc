@@ -78,6 +78,7 @@ enum {
   TK_INT,     // int
   TK_CHAR,    // char
   TK_RETURN,  // return
+  TK_MISC,
 };
 
 typedef struct {
