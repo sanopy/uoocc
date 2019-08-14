@@ -146,6 +146,27 @@ int test_global_var() {
   return 0;
 }
 
+enum { ENUM_A, ENUM_B, ENUM_C, ENUM_D, ENUM_E };
+
+int test_enum() {
+  enum {
+    TYPE_A,
+    TYPE_B,
+    TYPE_C,
+    TYPE_D,
+  };
+
+  expect(ENUM_A, 0);
+  expect(ENUM_B, 1);
+  expect(ENUM_C, 2);
+  expect(ENUM_D, 3);
+  expect(ENUM_E, 4);
+  expect(TYPE_A, 0);
+  expect(TYPE_B, 1);
+  expect(TYPE_C, 2);
+  expect(TYPE_D, 3);
+}
+
 int main() {
   printf("Testing variable ...\n");
 

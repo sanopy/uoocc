@@ -8,6 +8,7 @@ static SymbolTableEntry *make_SymbolTableEntry(CType *ctype, int is_global) {
   SymbolTableEntry *p = malloc(sizeof(SymbolTableEntry));
   p->ctype = ctype;
   p->is_global = is_global;
+  p->is_constant = 0;
   return p;
 }
 
@@ -76,6 +77,7 @@ Ast *semantic_analysis(Ast *p) {
   if (p == NULL)
     return NULL;
 
+  Vector *v;
   switch (p->type) {
     case AST_OP_ADD:
       p->left = semantic_analysis(p->left);
@@ -179,8 +181,27 @@ Ast *semantic_analysis(Ast *p) {
             p->token, allocate_concat_3string("use of undeclared identifier '",
                                               p->ident, "'"));
       else {
-        p->symbol_table_entry = symboltable_get(symbol_table, p->ident);
-        p->ctype = p->symbol_table_entry->ctype;
+        SymbolTableEntry *e = symboltable_get(symbol_table, p->ident);
+        if (e->is_constant == 1) {
+          p = make_ast_int(e->constant_value);
+        } else {
+          p->symbol_table_entry = e;
+          p->ctype = p->symbol_table_entry->ctype;
+        }
+      }
+      break;
+    case AST_ENUM:
+      v = p->ctype->enumerator_list;
+      for (int i = 0; i < v->size; i++) {
+        CType *ctype = make_ctype(TYPE_INT, NULL);
+        SymbolTableEntry *_e = make_SymbolTableEntry(ctype, 0);
+        _e->is_constant = 1;
+        _e->constant_value = i;
+        MapEntry *e = allocate_MapEntry(vector_at(v, i), _e);
+        if (map_get(symbol_table, e->key) != NULL)  // already defined table.
+          error_with_token(p->token, allocate_concat_3string(
+                                         "redefinition of '", e->key, "'"));
+        map_put(symbol_table, e);
       }
       break;
     case AST_SUBSCRIPT:
@@ -195,7 +216,7 @@ Ast *semantic_analysis(Ast *p) {
       _e->offset = get_offset_from_bp(p->ctype);
       MapEntry *e = allocate_MapEntry(p->ident, _e);
       if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
-        error_with_token(p->token, allocate_concat_3string("redifinition of '",
+        error_with_token(p->token, allocate_concat_3string("redefinition of '",
                                                            p->ident, "'"));
       map_put(symbol_table, e);
       break;

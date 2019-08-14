@@ -78,6 +78,7 @@ enum {
   TK_INT,     // int
   TK_CHAR,    // char
   TK_RETURN,  // return
+  TK_ENUM,    // enum
   TK_MISC,
 };
 
@@ -142,6 +143,7 @@ enum {
   AST_OP_ASSIGN,
   AST_OP_SIZEOF,
   AST_VAR,
+  AST_ENUM,
   AST_SUBSCRIPT,
   AST_DECL_LOCAL_VAR,
   AST_DECL_GLOBAL_VAR,
@@ -160,18 +162,22 @@ enum {
   TYPE_CHAR,
   TYPE_PTR,
   TYPE_ARRAY,
+  TYPE_ENUM,
 };
 
 typedef struct _CType {
   int type;
   struct _CType *ptrof;
   int array_size;
+  Vector *enumerator_list;
 } CType;
 
 typedef struct {
   CType *ctype;
   int offset;
   int is_global;
+  int is_constant;
+  int constant_value;
   char *ident;
 } SymbolTableEntry;
 

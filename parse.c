@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include "uoocc.h"
 
@@ -8,6 +9,7 @@ CType *make_ctype(int type, CType *ptrof) {
   p->type = type;
   p->ptrof = ptrof;
   p->array_size = 0;
+  p->enumerator_list = NULL;
   return p;
 }
 
@@ -40,6 +42,14 @@ static Ast *make_ast_var(char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_VAR;
   p->ident = ident;
+  p->token = token;
+  return p;
+}
+
+static Ast *make_ast_enum(CType *ctype, Token *token) {
+  Ast *p = malloc(sizeof(Ast));
+  p->type = AST_ENUM;
+  p->ctype = ctype;
   p->token = token;
   return p;
 }
@@ -527,32 +537,80 @@ static Ast *declarator(CType *ctype) {
 
 static int is_type_specifier(Token *tk) {
   int t = tk->type;
-  return t == TK_INT || t == TK_CHAR;
+  return t == TK_INT || t == TK_CHAR || t == TK_ENUM;
 }
 
-// <type_specifier> = 'int' | 'char'
-static CType *type_specifier(void) {
-  // current token is 'int' or 'char' when enter this function.
-  CType *ret;
-  if (current_token()->type == TK_INT)
-    ret = make_ctype(TYPE_INT, NULL);
-  else
-    ret = make_ctype(TYPE_CHAR, NULL);
+// <enumerator_list_tail> = ε | ',' ident
+static void enumerator_list_tail(Vector *list) {
+  if (current_token()->type == TK_COMMA && second_token()->type == TK_IDENT) {
+    expect_token(next_token(), TK_IDENT);
+    vector_push_back(list, current_token()->text);
+    next_token();
+    enumerator_list_tail(list);
+  }
 
+  return;
+}
+
+// <enumerator_list> = ident <enumerator_list_tail>
+static Vector *enumerator_list(void) {
+  Vector *list = vector_new();
+  expect_token(current_token(), TK_IDENT);
+  vector_push_back(list, current_token()->text);
   next_token();
+  enumerator_list_tail(list);
+  return list;
+}
+
+// <enum_specifier> = 'enum' '{' <enumerator_list> [ ',' ] '}'
+static Vector *enum_specifier(void) {
+  expect_token(current_token(), TK_ENUM);
+  expect_token(next_token(), TK_LCUR);
+  next_token();
+  Vector *list = enumerator_list();
+  if (current_token()->type == TK_COMMA)
+    next_token();
+  expect_token(current_token(), TK_RCUR);
+  next_token();
+  return list;
+}
+
+// <type_specifier> = 'int' | 'char' | <enum_specifier>
+static CType *type_specifier(void) {
+  // current token is 'int', 'char' or 'enum' when enter this function.
+  CType *ret;
+  if (current_token()->type == TK_INT) {
+    ret = make_ctype(TYPE_INT, NULL);
+    next_token();
+  } else if (current_token()->type == TK_CHAR) {
+    ret = make_ctype(TYPE_CHAR, NULL);
+    next_token();
+  } else {
+    ret = make_ctype(TYPE_ENUM, NULL);
+    ret->enumerator_list = enum_specifier();
+  }
+
   return ret;
 }
 
 // <declaration_specifiers> = <type_specifier>
 static CType *declaration_specifiers(void) {
-  // current token is 'int' or 'char' when enter this function.
+  // current token is 'int', 'char' or 'enum' when enter this function.
   return type_specifier();
 }
 
-// <declaration> = <declaration_specifiers> <declarator> ';'
+// <declaration> = <declaration_specifiers> [ <declarator> ] ';'
 static Ast *declaration(void) {
-  // current token is 'int' or 'char' when enter this function.
-  Ast *p = declarator(declaration_specifiers());
+  // current token is 'int', 'char' or 'enum' when enter this function.
+  Ast *p;
+  Token *tk = current_token();
+  CType *ctype = declaration_specifiers();
+  if (current_token()->type == TK_SEMI) {
+    assert(ctype->type == TYPE_ENUM);  // only enum can skip <declarator>
+    p = make_ast_enum(ctype, tk);
+  } else {
+    p = declarator(ctype);
+  }
 
   expect_token(current_token(), TK_SEMI);
   next_token();
@@ -720,7 +778,7 @@ static Ast *statement(void) {
     return expr_statement();
 }
 
-// <program> = { <declaration_specifiers> <declarator> ';' |
+// <program> = { <declaration_specifiers> [ <declarator> ] ';' |
 //   <declaration_specifiers> <declarator> <compound_statement> }
 Vector *program(void) {
   Vector *v = vector_new();
@@ -728,7 +786,19 @@ Vector *program(void) {
   while (current_token()->type != TK_EOF) {
     if (!is_type_specifier(current_token()))
       error_with_token(current_token(), "type_specifier was expected");
-    Ast *p = declarator(declaration_specifiers());
+    Ast *p;
+    Token *tk = current_token();
+    CType *ctype = declaration_specifiers();
+    if (current_token()->type == TK_SEMI) {
+      assert(ctype->type == TYPE_ENUM);  // only enum can skip <declarator>
+      p = make_ast_enum(ctype, tk);
+      next_token();
+
+      vector_push_back(v, p);
+      continue;
+    } else {
+      p = declarator(ctype);
+    }
     if (p->type == AST_DECL_LOCAL_VAR) {
       p->type = AST_DECL_GLOBAL_VAR;
       expect_token(current_token(), TK_SEMI);
