@@ -24,6 +24,33 @@ static SymbolTableEntry *symboltable_get(Map *table, char *key) {
   }
 }
 
+int max_size(CType *ctype) {
+  int ret = 0;
+  if (ctype->type == TYPE_CHAR)
+    ret = 1;
+  else if (ctype->type == TYPE_INT)
+    ret = 4;
+  else if (ctype->type == TYPE_PTR)
+    ret = 8;
+  else if (ctype->type == TYPE_ARRAY)
+    ret = max_size(ctype->ptrof);
+  else if (ctype->type == TYPE_STRUCT) {
+    for (int i = 0; i < ctype->struct_decl->size; i++) {
+      int s =
+          max_size(((StructMember *)vector_at(ctype->struct_decl, i))->ctype);
+      if (ret < s)
+        ret = s;
+    }
+  }
+  return ret;
+}
+
+int calc_offset(CType *ctype, int now_offset) {
+  int max = max_size(ctype);
+  int mod = now_offset % max;
+  return mod == 0 ? now_offset : now_offset + max - mod;
+}
+
 int sizeof_ctype(CType *ctype) {
   if (ctype->type == TYPE_INT)
     return 4;
@@ -31,8 +58,18 @@ int sizeof_ctype(CType *ctype) {
     return 1;
   else if (ctype->type == TYPE_PTR)
     return 8;
-  else if (ctype->type == TYPE_ARRAY) {
+  else if (ctype->type == TYPE_ARRAY)
     return sizeof_ctype(ctype->ptrof) * ctype->array_size;
+  else if (ctype->type == TYPE_STRUCT) {
+    Vector *list = ctype->struct_decl;
+    int now_offset = 0;
+    for (int i = 0; i < list->size; i++) {
+      StructMember *p = vector_at(list, i);
+      p->offset = calc_offset(p->ctype, now_offset);
+      now_offset = p->offset + sizeof_ctype(p->ctype);
+    }
+    int mod = now_offset % max_size(ctype);
+    return mod == 0 ? now_offset : now_offset + max_size(ctype) - mod;
   } else
     assert(0);
 }
@@ -77,7 +114,6 @@ Ast *semantic_analysis(Ast *p) {
   if (p == NULL)
     return NULL;
 
-  Vector *v;
   switch (p->type) {
     case AST_OP_ADD:
       p->left = semantic_analysis(p->left);
@@ -190,7 +226,8 @@ Ast *semantic_analysis(Ast *p) {
         }
       }
       break;
-    case AST_ENUM:
+    case AST_ENUM: {
+      Vector *v;
       v = p->ctype->enumerator_list;
       for (int i = 0; i < v->size; i++) {
         CType *ctype = make_ctype(TYPE_INT, NULL);
@@ -204,6 +241,7 @@ Ast *semantic_analysis(Ast *p) {
         map_put(symbol_table, e);
       }
       break;
+    }
     case AST_SUBSCRIPT:
       p->left = semantic_analysis(p->left);
       p->right = semantic_analysis(p->right);

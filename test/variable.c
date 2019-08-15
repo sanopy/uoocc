@@ -165,6 +165,33 @@ int test_enum() {
   expect(TYPE_B, 1);
   expect(TYPE_C, 2);
   expect(TYPE_D, 3);
+
+  return 0;
+}
+
+int test_struct_sizeof() {
+  expect(sizeof(struct {
+           int a;
+           char *b;
+           int c;
+           char d;
+           char *e;
+         }),
+         32);
+  expect(sizeof(struct {
+           int a;
+           char b;
+           int c;
+         }),
+         12);
+  expect(sizeof(struct {
+           int a;
+           int b[3];
+           char *c;
+         }),
+         24);
+
+  return 0;
 }
 
 int main() {
@@ -175,6 +202,8 @@ int main() {
   test_array();
   test_string();
   test_global_var();
+  test_enum();
+  test_struct_sizeof();
 
   printf("OK!\n");
 

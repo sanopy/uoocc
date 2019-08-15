@@ -56,4 +56,5 @@ failtest 'int main() { if () {} }' "primary-expression was expected."
 failtest 'int main() { while () {} }' "primary-expression was expected."
 failtest '/*' "unterminated comment."
 failtest '/*/' "unterminated comment."
+failtest 'struct { int a; int hoge(); } x;' "not member variable."
 echo 'OK!'

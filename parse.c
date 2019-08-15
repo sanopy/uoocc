@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdlib.h>
 #include "uoocc.h"
 
@@ -537,7 +536,7 @@ static Ast *declarator(CType *ctype) {
 
 static int is_type_specifier(Token *tk) {
   int t = tk->type;
-  return t == TK_INT || t == TK_CHAR || t == TK_ENUM;
+  return t == TK_INT || t == TK_CHAR || t == TK_STRUCT || t == TK_ENUM;
 }
 
 // <enumerator_list_tail> = ε | ',' ident
@@ -575,9 +574,68 @@ static Vector *enum_specifier(void) {
   return list;
 }
 
-// <type_specifier> = 'int' | 'char' | <enum_specifier>
+// static CType *type_specifier(void);
+static Ast *declaration(void);
+
+// <struct_declaration> = <declaration>
+static StructMember *struct_declaration() {
+  Ast *p = declaration();
+  if (p->type == AST_DECL_LOCAL_VAR) {
+    StructMember *ret = malloc(sizeof(StructMember));
+    ret->ctype = p->ctype;
+    ret->name = p->ident;
+    return ret;
+  } else {
+    error_with_token(p->token, "not member variable");
+    return NULL;  // just aboid compiler warnings.
+  }
+
+  /* CType *ctype = type_name(); */
+  /* Token *ident = current_token(); */
+  /* expect_token(next_token(), TK_SEMI); */
+  /* next_token(); */
+  /* StructMember *ret = malloc(sizeof(StructMember)); */
+  /* ret->ctype = ctype; */
+  /* ret->name = ident->text; */
+  /* return ret; */
+}
+
+// <struct_declaration_list_tail> = ε | <struct_declaration>
+// <struct_declaration_list_tail>
+static void struct_declaration_list_tail(Vector *v) {
+  if (is_type_specifier(current_token())) {
+    StructMember *p = struct_declaration();
+    vector_push_back(v, p);
+    struct_declaration_list_tail(v);
+  }
+
+  return;
+}
+
+// <struct_declaration_list> = <struct_declaration>
+// <struct_declaration_list_tail>
+static Vector *struct_declaration_list() {
+  Vector *v = vector_new();
+
+  vector_push_back(v, struct_declaration());
+  struct_declaration_list_tail(v);
+
+  return v;
+}
+
+// <struct_specifier> = 'struct' '{' <struct_declaration_list> '}'
+static Vector *struct_specifier() {
+  expect_token(current_token(), TK_STRUCT);
+  expect_token(next_token(), TK_LCUR);
+  next_token();
+  Vector *ret = struct_declaration_list();
+  expect_token(current_token(), TK_RCUR);
+  next_token();
+  return ret;
+}
+
+// <type_specifier> = 'int' | 'char' | <struct_specifier> | <enum_specifier>
 static CType *type_specifier(void) {
-  // current token is 'int', 'char' or 'enum' when enter this function.
   CType *ret;
   if (current_token()->type == TK_INT) {
     ret = make_ctype(TYPE_INT, NULL);
@@ -585,6 +643,9 @@ static CType *type_specifier(void) {
   } else if (current_token()->type == TK_CHAR) {
     ret = make_ctype(TYPE_CHAR, NULL);
     next_token();
+  } else if (current_token()->type == TK_STRUCT) {
+    ret = make_ctype(TYPE_STRUCT, NULL);
+    ret->struct_decl = struct_specifier();
   } else {
     ret = make_ctype(TYPE_ENUM, NULL);
     ret->enumerator_list = enum_specifier();
@@ -601,12 +662,12 @@ static CType *declaration_specifiers(void) {
 
 // <declaration> = <declaration_specifiers> [ <declarator> ] ';'
 static Ast *declaration(void) {
-  // current token is 'int', 'char' or 'enum' when enter this function.
   Ast *p;
   Token *tk = current_token();
   CType *ctype = declaration_specifiers();
   if (current_token()->type == TK_SEMI) {
-    assert(ctype->type == TYPE_ENUM);  // only enum can skip <declarator>
+    if (ctype->type != TYPE_ENUM)  // only enum can skip <declarator>
+      error_with_token(current_token(), "declarator was expected");
     p = make_ast_enum(ctype, tk);
   } else {
     p = declarator(ctype);
@@ -790,7 +851,8 @@ Vector *program(void) {
     Token *tk = current_token();
     CType *ctype = declaration_specifiers();
     if (current_token()->type == TK_SEMI) {
-      assert(ctype->type == TYPE_ENUM);  // only enum can skip <declarator>
+      if (ctype->type != TYPE_ENUM)  // only enum can skip <declarator>
+        error_with_token(current_token(), "declarator was expected");
       p = make_ast_enum(ctype, tk);
       next_token();
 

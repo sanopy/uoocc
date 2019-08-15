@@ -7,7 +7,7 @@ typedef struct {
   int reserved_size;
 } Vector;
 
-#define VECTOR_BLOCK_SIZE 4
+#define VECTOR_BLOCK_SIZE 16
 
 Vector *vector_new(void);
 int vector_push_back(Vector *, void *);
@@ -79,6 +79,7 @@ enum {
   TK_CHAR,    // char
   TK_RETURN,  // return
   TK_ENUM,    // enum
+  TK_STRUCT,  // struct
   TK_MISC,
 };
 
@@ -163,6 +164,7 @@ enum {
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_ENUM,
+  TYPE_STRUCT,
 };
 
 typedef struct _CType {
@@ -170,7 +172,14 @@ typedef struct _CType {
   struct _CType *ptrof;
   int array_size;
   Vector *enumerator_list;
+  Vector *struct_decl;
 } CType;
+
+typedef struct {
+  CType *ctype;
+  char *name;
+  int offset;
+} StructMember;
 
 typedef struct {
   CType *ctype;

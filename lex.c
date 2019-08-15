@@ -276,6 +276,8 @@ void init_token_queue(FILE *fp) {
         vector_push_back(v, make_token(now_row, now_col, TK_RETURN, s));
       else if (strcmp(s, "enum") == 0)
         vector_push_back(v, make_token(now_row, now_col, TK_ENUM, s));
+      else if (strcmp(s, "struct") == 0)
+        vector_push_back(v, make_token(now_row, now_col, TK_STRUCT, s));
       else
         vector_push_back(v, make_token(now_row, now_col, TK_IDENT, s));
       now_col += strlen(s) - 1;
