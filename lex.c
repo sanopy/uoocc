@@ -143,6 +143,10 @@ void init_token_queue(FILE *fp) {
         now_col++;
         vector_push_back(
             v, make_token(now_row, now_col, TK_DEC, allocate_string("--")));
+      } else if (c == '>') {
+        now_col++;
+        vector_push_back(
+            v, make_token(now_row, now_col, TK_ARROW, allocate_string("->")));
       } else {
         ungetc(c, fp);
         vector_push_back(

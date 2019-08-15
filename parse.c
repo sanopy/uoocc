@@ -156,6 +156,7 @@ static Ast *primary_expr(void) {
   <postfix_expr> = <primary_expr> <postfix_expr_tail>
   <postfix_expr_tail> = ε |
     '.' <ident> <postfix_expr_tail> |
+    '->' <ident> <postfix_expr_tail> |
     '++' <postfix_expr_tail> |
     '--' <postfix_expr_tail> |
     '[' <expr> ']' <postfix_expr_tail>
@@ -169,6 +170,13 @@ static Ast *postfix_expr_tail(Ast *left) {
     next_token();
     Ast *right = make_ast_var(ident->text, ident);
     Ast *p = make_ast_op(AST_OP_DOT, left, right, tk);
+    return postfix_expr_tail(p);
+  } else if (type == TK_ARROW) {
+    expect_token(next_token(), TK_IDENT);
+    Token *ident = current_token();
+    next_token();
+    Ast *right = make_ast_var(ident->text, ident);
+    Ast *p = make_ast_op(AST_OP_ARROW, left, right, tk);
     return postfix_expr_tail(p);
   } else if (type == TK_INC || type == TK_DEC) {
     next_token();
@@ -597,15 +605,6 @@ static StructMember *struct_declaration() {
     error_with_token(p->token, "not member variable");
     return NULL;  // just aboid compiler warnings.
   }
-
-  /* CType *ctype = type_name(); */
-  /* Token *ident = current_token(); */
-  /* expect_token(next_token(), TK_SEMI); */
-  /* next_token(); */
-  /* StructMember *ret = malloc(sizeof(StructMember)); */
-  /* ret->ctype = ctype; */
-  /* ret->name = ident->text; */
-  /* return ret; */
 }
 
 // <struct_declaration_list_tail> = ε | <struct_declaration>

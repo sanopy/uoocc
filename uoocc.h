@@ -70,6 +70,8 @@ enum {
   TK_GE,      // >=
   TK_EQUAL,   // ==
   TK_NEQUAL,  // !=
+  TK_DOT,     // .
+  TK_ARROW,   // ->
   TK_SIZEOF,  // sizeof
   TK_IF,      // if
   TK_ELSE,    // else
@@ -80,7 +82,6 @@ enum {
   TK_RETURN,  // return
   TK_ENUM,    // enum
   TK_STRUCT,  // struct
-  TK_DOT,     // .
   TK_MISC,
 };
 
@@ -145,6 +146,7 @@ enum {
   AST_OP_ASSIGN,
   AST_OP_SIZEOF,
   AST_OP_DOT,
+  AST_OP_ARROW,
   AST_VAR,
   AST_ENUM,
   AST_SUBSCRIPT,

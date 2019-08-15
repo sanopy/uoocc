@@ -238,7 +238,6 @@ void codegen(Ast *p) {
       printf("\tpushq %%rax\n");
       break;
     case AST_OP_DOT:
-      puts("### OP_DOT Starts Here.");
       emit_lvalue(p->left);
       printf("\tpopq %%rax\n");
       if (p->ctype->type == TYPE_CHAR) {
@@ -250,7 +249,6 @@ void codegen(Ast *p) {
       } else  // TODO: TYPE_STRUCT, TYPE_ARRAY
         printf("\tpushq %d(%%rax)\n", p->offset_from_bp);
 
-      puts("### OP_DOT Ends Here.");
       break;
     case AST_VAR:
       if (p->symbol_table_entry->is_global) {

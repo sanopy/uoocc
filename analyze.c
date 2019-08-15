@@ -192,6 +192,7 @@ Ast *semantic_analysis(Ast *p) {
       if (p->left->ctype->type != TYPE_PTR || p->left->ctype->ptrof == NULL)
         error_with_token(p->token, "indirection requires pointer operand");
       p->ctype = p->left->ctype->ptrof;
+      sizeof_ctype(p->ctype);  // to calc struct offset
       break;
     case AST_OP_ASSIGN:
       p->left = semantic_analysis(p->left);
@@ -234,6 +235,12 @@ Ast *semantic_analysis(Ast *p) {
         error_with_token(p->right->token, "not exist such member");
       }
       break;
+    case AST_OP_ARROW: {
+      Ast *deref = make_ast_op(AST_OP_DEREF, p->left, NULL, p->token);
+      Ast *dot = make_ast_op(AST_OP_DOT, deref, p->right, p->token);
+      p = semantic_analysis(dot);
+      break;
+    }
     case AST_VAR:
       if (symboltable_get(symbol_table, p->ident) ==
           NULL)  // undefined variable.

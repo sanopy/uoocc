@@ -242,6 +242,17 @@ int test_struct() {
   (*p).a = 15;
   expect(A.a, 15);
 
+  expect(p->a, 15);
+  p->a = 16;
+  expect(A.a, 16);
+  expect(p->a, 16);
+  p->b = 20;
+  expect_char(p->b, 20);
+  expect_char(A.b, 20);
+  (*p).c = 25;
+  expect(p->c, 25);
+  expect(A.c, 25);
+
   return 0;
 }
 
