@@ -202,6 +202,9 @@ void init_token_queue(FILE *fp) {
     else if (c == ',')
       vector_push_back(
           v, make_token(now_row, now_col, TK_COMMA, allocate_string(",")));
+    else if (c == '.')
+      vector_push_back(
+          v, make_token(now_row, now_col, TK_DOT, allocate_string(".")));
     else if (c == '{')
       vector_push_back(
           v, make_token(now_row, now_col, TK_LCUR, allocate_string("{")));

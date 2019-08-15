@@ -80,6 +80,7 @@ enum {
   TK_RETURN,  // return
   TK_ENUM,    // enum
   TK_STRUCT,  // struct
+  TK_DOT,     // .
   TK_MISC,
 };
 
@@ -143,6 +144,7 @@ enum {
   AST_OP_L_OR,
   AST_OP_ASSIGN,
   AST_OP_SIZEOF,
+  AST_OP_DOT,
   AST_VAR,
   AST_ENUM,
   AST_SUBSCRIPT,

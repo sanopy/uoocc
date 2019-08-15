@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include "uoocc.h"
 
 Map *symbol_table;
@@ -200,7 +201,8 @@ Ast *semantic_analysis(Ast *p) {
       if (p->left->ctype->type == TYPE_CHAR &&
           p->right->ctype->type == TYPE_INT)
         ;
-      else if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF)
+      else if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF &&
+               p->left->type != AST_OP_DOT)
         error_with_token(p->token, "expression is not assignable");
       else if (p->left->ctype->type != p->right->ctype->type)
         error_with_token(p->token, "expression is not assignable");
@@ -209,6 +211,28 @@ Ast *semantic_analysis(Ast *p) {
     case AST_OP_SIZEOF:
       p->left = semantic_analysis(p->left);
       return make_ast_int(sizeof_ctype(p->left->ctype));
+      break;
+    case AST_OP_DOT:
+      p->left = semantic_analysis(p->left);
+      if ((p->left->type != AST_OP_DEREF && p->left->type != AST_VAR) ||
+          p->right->type != AST_VAR || p->left->ctype->type != TYPE_STRUCT) {
+        error_with_token(p->token, "cannot apply operator");
+      }
+      Vector *list = p->left->ctype->struct_decl;
+      char *target = p->right->ident;
+      int is_exist_target = 0;
+      for (int i = 0; i < list->size; i++) {
+        StructMember *sm = vector_at(list, i);
+        if (strcmp(sm->name, target) == 0) {
+          is_exist_target = 1;
+          p->ctype = sm->ctype;
+          p->offset_from_bp = sm->offset;
+          break;
+        }
+      }
+      if (is_exist_target == 0) {
+        error_with_token(p->right->token, "not exist such member");
+      }
       break;
     case AST_VAR:
       if (symboltable_get(symbol_table, p->ident) ==
@@ -223,6 +247,7 @@ Ast *semantic_analysis(Ast *p) {
         } else {
           p->symbol_table_entry = e;
           p->ctype = p->symbol_table_entry->ctype;
+          sizeof_ctype(p->ctype);  // to calc struct offset
         }
       }
       break;

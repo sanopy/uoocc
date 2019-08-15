@@ -20,6 +20,11 @@ static void emit_lvalue(Ast *p) {
       printf("\tleaq %d(%%rbp), %%rax\n", -p->symbol_table_entry->offset);
       printf("\tpushq %%rax\n");
     }
+  } else if (p->type == AST_OP_DOT) {
+    emit_lvalue(p->left);
+    printf("\tpopq %%rax\n");
+    printf("\taddq $%d, %%rax\n", p->offset_from_bp);
+    printf("\tpushq %%rax\n");
   }
 }
 
@@ -231,6 +236,21 @@ void codegen(Ast *p) {
       printf("\t%s %%al\n", s);
       printf("\tmovzbq %%al, %%rax\n");
       printf("\tpushq %%rax\n");
+      break;
+    case AST_OP_DOT:
+      puts("### OP_DOT Starts Here.");
+      emit_lvalue(p->left);
+      printf("\tpopq %%rax\n");
+      if (p->ctype->type == TYPE_CHAR) {
+        printf("\tmovsbq %d(%%rax), %%rdx\n", p->offset_from_bp);
+        printf("\tpushq %%rdx\n");
+      } else if (p->ctype->type == TYPE_INT) {
+        printf("\tmovslq %d(%%rax), %%rdx\n", p->offset_from_bp);
+        printf("\tpushq %%rdx\n");
+      } else  // TODO: TYPE_STRUCT, TYPE_ARRAY
+        printf("\tpushq %d(%%rax)\n", p->offset_from_bp);
+
+      puts("### OP_DOT Ends Here.");
       break;
     case AST_VAR:
       if (p->symbol_table_entry->is_global) {

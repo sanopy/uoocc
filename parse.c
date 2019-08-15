@@ -155,6 +155,7 @@ static Ast *primary_expr(void) {
 /*
   <postfix_expr> = <primary_expr> <postfix_expr_tail>
   <postfix_expr_tail> = ε |
+    '.' <ident> <postfix_expr_tail> |
     '++' <postfix_expr_tail> |
     '--' <postfix_expr_tail> |
     '[' <expr> ']' <postfix_expr_tail>
@@ -162,7 +163,14 @@ static Ast *primary_expr(void) {
 static Ast *postfix_expr_tail(Ast *left) {
   Token *tk = current_token();
   int type = tk->type;
-  if (type == TK_INC || type == TK_DEC) {
+  if (type == TK_DOT) {
+    expect_token(next_token(), TK_IDENT);
+    Token *ident = current_token();
+    next_token();
+    Ast *right = make_ast_var(ident->text, ident);
+    Ast *p = make_ast_op(AST_OP_DOT, left, right, tk);
+    return postfix_expr_tail(p);
+  } else if (type == TK_INC || type == TK_DEC) {
     next_token();
     Ast *right = postfix_expr_tail(NULL);
     int ast_op = type == TK_INC ? AST_OP_POST_INC : AST_OP_POST_DEC;

@@ -194,6 +194,57 @@ int test_struct_sizeof() {
   return 0;
 }
 
+struct {
+  int a;
+  char b;
+  int c;
+  char d;
+} A;
+
+int test_struct() {
+  struct {
+    int a;
+    char b;
+    int *p;
+    int c;
+    char d;
+  } B;
+  A.a = 0;
+  A.b = 60;
+  A.c = 1;
+  A.d = 61;
+  B.a = 2;
+  B.b = 62;
+  B.c = 3;
+  B.d = 63;
+  B.p = &(A.c);
+  expect(A.a, 0);
+  expect(A.c, 1);
+  expect(B.a, 2);
+  expect(B.c, 3);
+  expect_char(A.b, 60);
+  expect_char(A.d, 61);
+  expect_char(B.b, 62);
+  expect_char(B.d, 63);
+
+  *(B.p) = 5;
+  expect(A.c, 5);
+
+  struct {
+    int a;
+    char b;
+    int c;
+    char d;
+  } * p;
+
+  p = &A;
+  expect((*p).a, 0);
+  (*p).a = 15;
+  expect(A.a, 15);
+
+  return 0;
+}
+
 int main() {
   printf("Testing variable ...\n");
 
@@ -204,6 +255,7 @@ int main() {
   test_global_var();
   test_enum();
   test_struct_sizeof();
+  test_struct();
 
   printf("OK!\n");
 
