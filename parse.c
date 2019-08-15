@@ -9,6 +9,8 @@ CType *make_ctype(int type, CType *ptrof) {
   p->ptrof = ptrof;
   p->array_size = 0;
   p->enumerator_list = NULL;
+  p->struct_decl = NULL;
+  p->struct_tag = NULL;
   return p;
 }
 
@@ -630,12 +632,24 @@ static Vector *struct_declaration_list() {
   return v;
 }
 
-// <struct_specifier> = 'struct' '{' <struct_declaration_list> '}'
-static Vector *struct_specifier() {
+// <struct_specifier> = 'struct' <ident> |
+//   'struct' [ <ident> ] '{' <struct_declaration_list> '}'
+static CType *struct_specifier() {
+  char *tag = NULL;
   expect_token(current_token(), TK_STRUCT);
-  expect_token(next_token(), TK_LCUR);
+  if (next_token()->type == TK_IDENT) {
+    tag = current_token()->text;
+    if (next_token()->type != TK_LCUR) {
+      CType *ret = make_ctype(TYPE_STRUCT, NULL);
+      ret->struct_tag = tag;
+      return ret;
+    }
+  }
+  expect_token(current_token(), TK_LCUR);
   next_token();
-  Vector *ret = struct_declaration_list();
+  CType *ret = make_ctype(TYPE_STRUCT, NULL);
+  ret->struct_decl = struct_declaration_list();
+  ret->struct_tag = tag;
   expect_token(current_token(), TK_RCUR);
   next_token();
   return ret;
@@ -651,8 +665,7 @@ static CType *type_specifier(void) {
     ret = make_ctype(TYPE_CHAR, NULL);
     next_token();
   } else if (current_token()->type == TK_STRUCT) {
-    ret = make_ctype(TYPE_STRUCT, NULL);
-    ret->struct_decl = struct_specifier();
+    ret = struct_specifier();
   } else {
     ret = make_ctype(TYPE_ENUM, NULL);
     ret->enumerator_list = enum_specifier();

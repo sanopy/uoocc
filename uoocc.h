@@ -177,6 +177,7 @@ typedef struct _CType {
   int array_size;
   Vector *enumerator_list;
   Vector *struct_decl;
+  char *struct_tag;
 } CType;
 
 typedef struct {
@@ -191,6 +192,7 @@ typedef struct {
   int is_global;
   int is_constant;
   int constant_value;
+  int is_struct_tag;
   char *ident;
 } SymbolTableEntry;
 

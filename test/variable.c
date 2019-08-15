@@ -194,7 +194,7 @@ int test_struct_sizeof() {
   return 0;
 }
 
-struct {
+struct _A {
   int a;
   char b;
   int c;
@@ -202,7 +202,7 @@ struct {
 } A;
 
 int test_struct() {
-  struct {
+  struct _B {
     int a;
     char b;
     int *p;
@@ -230,12 +230,7 @@ int test_struct() {
   *(B.p) = 5;
   expect(A.c, 5);
 
-  struct {
-    int a;
-    char b;
-    int c;
-    char d;
-  } * p;
+  struct _A *p;
 
   p = &A;
   expect((*p).a, 0);
@@ -252,6 +247,9 @@ int test_struct() {
   (*p).c = 25;
   expect(p->c, 25);
   expect(A.c, 25);
+  A.d = 22;
+  expect_char(A.d, 22);
+  expect_char(p->d, 22);
 
   return 0;
 }

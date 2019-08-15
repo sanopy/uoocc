@@ -111,6 +111,34 @@ static CType *char_to_int(CType *ctype) {
     return ctype;
 }
 
+static CType *update_ctype(CType *ctype, Token *token) {
+  if (ctype->type == TYPE_ARRAY || ctype->type == TYPE_PTR) {
+    ctype->ptrof = update_ctype(ctype->ptrof, token);
+    return ctype;
+  }
+
+  if (ctype->struct_tag != NULL) {
+    if (ctype->struct_decl == NULL) {
+      // load ctype from tag name
+      SymbolTableEntry *e = symboltable_get(symbol_table, ctype->struct_tag);
+      return e->ctype;
+    } else {
+      // register ctype with tag name
+      SymbolTableEntry *_e = make_SymbolTableEntry(ctype, 0);
+      _e->is_struct_tag = 1;
+      _e->ident = ctype->struct_tag;
+      MapEntry *e = allocate_MapEntry(_e->ident, _e);
+      if (map_get(symbol_table, e->key) !=
+          NULL)  // already defined tag or variable.
+        error_with_token(token,
+                         allocate_concat_3string("redefinition of '",
+                                                 ctype->struct_tag, "'"));
+      map_put(symbol_table, e);
+    }
+  }
+  return ctype;
+}
+
 Ast *semantic_analysis(Ast *p) {
   if (p == NULL)
     return NULL;
@@ -282,6 +310,9 @@ Ast *semantic_analysis(Ast *p) {
       return semantic_analysis(deref);
       break;
     case AST_DECL_LOCAL_VAR: {
+      p->ctype = update_ctype(p->ctype, p->token);
+
+      // register variable
       SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 0);
       _e->offset = get_offset_from_bp(p->ctype);
       MapEntry *e = allocate_MapEntry(p->ident, _e);
@@ -292,10 +323,15 @@ Ast *semantic_analysis(Ast *p) {
       break;
     }
     case AST_DECL_GLOBAL_VAR: {
+      p->ctype = update_ctype(p->ctype, p->token);
+
+      // register variable
       SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 1);
       _e->ident = p->ident;
       MapEntry *e = allocate_MapEntry(p->ident, _e);
-      // TODO: check already defined variable.
+      if (map_get(symbol_table, e->key) != NULL)  // already defined variable.
+        error_with_token(p->token, allocate_concat_3string("redefinition of '",
+                                                           p->ident, "'"));
       map_put(symbol_table, e);
       break;
     }
