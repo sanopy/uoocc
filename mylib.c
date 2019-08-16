@@ -43,13 +43,13 @@ void error_with_token(Token *tk, char *s) {
 
 void expect_token(Token *tk, int expect) {
   char *token[] = {
-      "EOF",    "number",   "string", "ident",   "'+'",     "'-'",   "'*'",
-      "'/'",    "'&'",      "'|'",    "'^'",     "'~'",     "'<<'",  "'>>'",
-      "'&&'",   "'||'",     "'!'",    "'('",     "')'",     "'='",   "';'",
-      "','",    "'{'",      "'}'",    "'['",     "']'",     "'++'",  "'--'",
-      "'<'",    "'<='",     "'>'",    "'>='",    "'=='",    "'!='",  "'.'",
-      "'->'",   "'sizeof'", "'if'",   "'else'",  "'while'", "'for'", "'int'",
-      "'char'", "'return'", "'enum'", "'struct'"};
+      "EOF",    "number",   "string", "ident",    "'+'",      "'-'",   "'*'",
+      "'/'",    "'&'",      "'|'",    "'^'",      "'~'",      "'<<'",  "'>>'",
+      "'&&'",   "'||'",     "'!'",    "'('",      "')'",      "'='",   "';'",
+      "','",    "'{'",      "'}'",    "'['",      "']'",      "'++'",  "'--'",
+      "'<'",    "'<='",     "'>'",    "'>='",     "'=='",     "'!='",  "'.'",
+      "'->'",   "'sizeof'", "'if'",   "'else'",   "'while'",  "'for'", "'int'",
+      "'char'", "'return'", "'enum'", "'struct'", "'typedef'"};
   if (tk == NULL)
     error(allocate_concat_2string(token[expect], " was expected"));
   else if (tk->type != expect)

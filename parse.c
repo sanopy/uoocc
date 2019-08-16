@@ -2,6 +2,7 @@
 #include "uoocc.h"
 
 Map *string_table;
+Map *typedef_table;
 
 CType *make_ctype(int type, CType *ptrof) {
   CType *p = (CType *)malloc(sizeof(CType));
@@ -95,6 +96,18 @@ static Ast *make_ast_statement(int type) {
   Ast *p = malloc(sizeof(Ast));
   p->type = type;
   return p;
+}
+
+static CType *typedeftable_get(Map *table, char *key) {
+  MapEntry *e = map_get(table, key);
+  if (e == NULL) {
+    if (table->next == NULL)
+      return NULL;
+    else
+      return typedeftable_get(table->next, key);
+  } else {
+    return e->val;
+  }
 }
 
 static Ast *expr(void);
@@ -552,9 +565,15 @@ static Ast *declarator(CType *ctype) {
   return direct_declarator(ctype);
 }
 
+static int is_storage_class_cpecifier(Token *tk) {
+  int t = tk->type;
+  return t == TK_TYPEDEF;
+}
+
 static int is_type_specifier(Token *tk) {
   int t = tk->type;
-  return t == TK_INT || t == TK_CHAR || t == TK_STRUCT || t == TK_ENUM;
+  return t == TK_INT || t == TK_CHAR || t == TK_STRUCT || t == TK_ENUM ||
+         typedeftable_get(typedef_table, tk->text) != NULL;
 }
 
 // <enumerator_list_tail> = ε | ',' ident
@@ -655,7 +674,8 @@ static CType *struct_specifier() {
   return ret;
 }
 
-// <type_specifier> = 'int' | 'char' | <struct_specifier> | <enum_specifier>
+// <type_specifier> = 'int' | 'char' | <struct_specifier> | <enum_specifier> |
+//   <defined_type>
 static CType *type_specifier(void) {
   CType *ret;
   if (current_token()->type == TK_INT) {
@@ -666,18 +686,37 @@ static CType *type_specifier(void) {
     next_token();
   } else if (current_token()->type == TK_STRUCT) {
     ret = struct_specifier();
-  } else {
+  } else if (current_token()->type == TK_ENUM) {
     ret = make_ctype(TYPE_ENUM, NULL);
     ret->enumerator_list = enum_specifier();
+  } else {
+    CType *p = typedeftable_get(typedef_table, current_token()->text);
+    ret = p->ptrof;
+    printf("type = %d\n", ret->type);
+    next_token();
   }
 
   return ret;
 }
 
-// <declaration_specifiers> = <type_specifier>
+// <storage_class_cpecifier> = 'typedef'
+static Token *storage_class_cpecifier(void) {
+  if (current_token()->type == TK_TYPEDEF) {
+    Token *tk = current_token();
+    next_token();
+    return tk;
+  } else {
+    return NULL;
+  }
+}
+
+// <declaration_specifiers> = [ <storage_class_cpecifier> ] <type_specifier>
 static CType *declaration_specifiers(void) {
-  // current token is 'int', 'char' or 'enum' when enter this function.
-  return type_specifier();
+  Token *tk = storage_class_cpecifier();
+  if (tk == NULL)
+    return type_specifier();
+  else
+    return make_ctype(TYPE_TYPEDEF, type_specifier());
 }
 
 // <declaration> = <declaration_specifiers> [ <declarator> ] ';'
@@ -695,6 +734,19 @@ static Ast *declaration(void) {
 
   expect_token(current_token(), TK_SEMI);
   next_token();
+
+  // resolve typedef
+  if (ctype->type == TYPE_TYPEDEF) {
+    // register type
+    MapEntry *e = allocate_MapEntry(p->ident, ctype);
+    if (map_get(typedef_table, e->key) == NULL)
+      map_put(typedef_table, e);
+    else
+      error_with_token(
+          p->token, allocate_concat_3string("redefinition of '", e->key, "'"));
+
+    return NULL;
+  }
 
   return p;
 }
@@ -801,16 +853,19 @@ static Ast *iteration_statement(void) {
 static Ast *compound_statement(void) {
   // current token is '{' when enter this function.
   Ast *p = make_ast_compound_statement();
+  typedef_table = map_new(typedef_table);
 
   next_token();
   while (current_token()->type != TK_RCUR) {
-    if (is_type_specifier(current_token()))
+    if (is_storage_class_cpecifier(current_token()) ||
+        is_type_specifier(current_token()))
       vector_push_back(p->statements, declaration());
     else
       vector_push_back(p->statements, statement());
   }
   next_token();
 
+  typedef_table = typedef_table->next;
   return p;
 }
 
@@ -865,7 +920,8 @@ Vector *program(void) {
   Vector *v = vector_new();
 
   while (current_token()->type != TK_EOF) {
-    if (!is_type_specifier(current_token()))
+    if (!is_storage_class_cpecifier(current_token()) &&
+        !is_type_specifier(current_token()))
       error_with_token(current_token(), "type_specifier was expected");
     Ast *p;
     Token *tk = current_token();
@@ -881,6 +937,22 @@ Vector *program(void) {
     } else {
       p = declarator(ctype);
     }
+
+    // resolve typedef
+    if (ctype->type == TYPE_TYPEDEF) {
+      // register type
+      MapEntry *e = allocate_MapEntry(p->ident, ctype);
+      if (map_get(typedef_table, e->key) == NULL)
+        map_put(typedef_table, e);
+      else
+        error_with_token(p->token, allocate_concat_3string("redefinition of '",
+                                                           e->key, "'"));
+
+      expect_token(current_token(), TK_SEMI);
+      next_token();
+      continue;
+    }
+
     if (p->type == AST_DECL_LOCAL_VAR) {
       p->type = AST_DECL_GLOBAL_VAR;
       expect_token(current_token(), TK_SEMI);

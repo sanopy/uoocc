@@ -4,6 +4,7 @@ int main(void) {
   init_token_queue(stdin);
   string_table = map_new(NULL);
   symbol_table = map_new(NULL);
+  typedef_table = map_new(NULL);
   Vector *v = program();
 
   for (int i = 0; i < v->size; i++)

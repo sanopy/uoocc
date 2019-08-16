@@ -25,7 +25,7 @@ static SymbolTableEntry *symboltable_get(Map *table, char *key) {
   }
 }
 
-int max_size(CType *ctype) {
+static int max_size(CType *ctype) {
   int ret = 0;
   if (ctype->type == TYPE_CHAR)
     ret = 1;
@@ -46,7 +46,7 @@ int max_size(CType *ctype) {
   return ret;
 }
 
-int calc_offset(CType *ctype, int now_offset) {
+static int calc_offset(CType *ctype, int now_offset) {
   int max = max_size(ctype);
   int mod = now_offset % max;
   return mod == 0 ? now_offset : now_offset + max - mod;

@@ -254,6 +254,29 @@ int test_struct() {
   return 0;
 }
 
+int test_typedef() {
+  typedef int T;
+  T x;
+  x = 99;
+  expect(x, 99);
+
+  typedef struct {
+    int a;
+    int b;
+    int c;
+  } S;
+
+  S s;
+  s.a = 77;
+  s.b = 78;
+  s.c = 79;
+  expect(s.a, 77);
+  expect(s.b, 78);
+  expect(s.c, 79);
+
+  return 0;
+}
+
 int main() {
   printf("Testing variable ...\n");
 
@@ -265,6 +288,7 @@ int main() {
   test_enum();
   test_struct_sizeof();
   test_struct();
+  test_typedef();
 
   printf("OK!\n");
 

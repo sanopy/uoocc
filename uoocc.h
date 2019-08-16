@@ -25,12 +25,14 @@ typedef struct _Map {
   struct _Map *next;
 } Map;
 
-extern Map *symbol_table;
-
 MapEntry *allocate_MapEntry(char *, void *);
 Map *map_new(Map *);
 int map_put(Map *, MapEntry *);
 MapEntry *map_get(Map *, char *);
+
+extern Map *symbol_table;
+extern Map *string_table;
+extern Map *typedef_table;
 
 // lex.c
 #define MAX_TOKEN_LENGTH 256
@@ -40,48 +42,49 @@ enum {
   TK_NUM,
   TK_STR,
   TK_IDENT,
-  TK_PLUS,    // +
-  TK_MINUS,   // -
-  TK_STAR,    // *
-  TK_DIV,     // /
-  TK_AMP,     // &
-  TK_B_OR,    // |
-  TK_B_XOR,   // ^
-  TK_B_NOT,   // ~
-  TK_LSHIFT,  // <<
-  TK_RSHIFT,  // >>
-  TK_L_AND,   // &&
-  TK_L_OR,    // ||
-  TK_L_NOT,   // !
-  TK_LPAR,    // (
-  TK_RPAR,    // )
-  TK_ASSIGN,  // =
-  TK_SEMI,    // ;
-  TK_COMMA,   // ,
-  TK_LCUR,    // {
-  TK_RCUR,    // }
-  TK_LBRA,    // [
-  TK_RBRA,    // ]
-  TK_INC,     // ++
-  TK_DEC,     // --
-  TK_LT,      // <
-  TK_LE,      // <=
-  TK_GT,      // >
-  TK_GE,      // >=
-  TK_EQUAL,   // ==
-  TK_NEQUAL,  // !=
-  TK_DOT,     // .
-  TK_ARROW,   // ->
-  TK_SIZEOF,  // sizeof
-  TK_IF,      // if
-  TK_ELSE,    // else
-  TK_WHILE,   // while
-  TK_FOR,     // for
-  TK_INT,     // int
-  TK_CHAR,    // char
-  TK_RETURN,  // return
-  TK_ENUM,    // enum
-  TK_STRUCT,  // struct
+  TK_PLUS,     // +
+  TK_MINUS,    // -
+  TK_STAR,     // *
+  TK_DIV,      // /
+  TK_AMP,      // &
+  TK_B_OR,     // |
+  TK_B_XOR,    // ^
+  TK_B_NOT,    // ~
+  TK_LSHIFT,   // <<
+  TK_RSHIFT,   // >>
+  TK_L_AND,    // &&
+  TK_L_OR,     // ||
+  TK_L_NOT,    // !
+  TK_LPAR,     // (
+  TK_RPAR,     // )
+  TK_ASSIGN,   // =
+  TK_SEMI,     // ;
+  TK_COMMA,    // ,
+  TK_LCUR,     // {
+  TK_RCUR,     // }
+  TK_LBRA,     // [
+  TK_RBRA,     // ]
+  TK_INC,      // ++
+  TK_DEC,      // --
+  TK_LT,       // <
+  TK_LE,       // <=
+  TK_GT,       // >
+  TK_GE,       // >=
+  TK_EQUAL,    // ==
+  TK_NEQUAL,   // !=
+  TK_DOT,      // .
+  TK_ARROW,    // ->
+  TK_SIZEOF,   // sizeof
+  TK_IF,       // if
+  TK_ELSE,     // else
+  TK_WHILE,    // while
+  TK_FOR,      // for
+  TK_INT,      // int
+  TK_CHAR,     // char
+  TK_RETURN,   // return
+  TK_ENUM,     // enum
+  TK_STRUCT,   // struct
+  TK_TYPEDEF,  // typedef
   TK_MISC,
 };
 
@@ -169,6 +172,7 @@ enum {
   TYPE_ARRAY,
   TYPE_ENUM,
   TYPE_STRUCT,
+  TYPE_TYPEDEF,
 };
 
 typedef struct _CType {
@@ -216,8 +220,6 @@ typedef struct _Ast {
   struct _Ast *expr;  // [expr, return] statement
   struct _Ast *statement;
 } Ast;
-
-extern Map *string_table;
 
 CType *make_ctype(int, CType *);
 Ast *make_ast_op(int, Ast *, Ast *, Token *);
