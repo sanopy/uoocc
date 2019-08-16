@@ -34,7 +34,7 @@ int expect_ptr(int *a, int *b) {
   return 0;
 }
 
-int test_int_var() {
+void test_int_var() {
   int a;
   int b;
   int c;
@@ -46,10 +46,10 @@ int test_int_var() {
   expect(a + b, 16);
   expect(c, 22);
   expect(a * 2 + b + c, 43);
-  return 0;
+  return;
 }
 
-int test_char_var() {
+void test_char_var() {
   char x;
   char y;
   char z[3];
@@ -60,11 +60,11 @@ int test_char_var() {
   expect_char(y, 2);
   expect_char(z[0], 1);
   expect_char(z[0] + y, 3);
-  return 0;
+  return;
 }
 
 int e[4];
-int test_array() {
+void test_array() {
   int a[2];
   int b[2][2];
 
@@ -114,16 +114,16 @@ int test_array() {
   p = e;
   expect_ptr(e, p);
 
-  return 0;
+  return;
 }
 
-int test_string() {
+void test_string() {
   char *s;
   s = "abc";
 
   expect_char(s[0], 97);
   expect_char(s[0], 97);
-  return 0;
+  return;
 }
 
 int x;
@@ -131,24 +131,24 @@ int a[20];
 
 int inc() { return ++x; }
 
-int assign() {
+void assign(void) {
   a[5] = 5;
-  return 0;
+  return;
 }
 
-int test_global_var() {
+void test_global_var() {
   x = 1;
   expect(x, 1);
   inc();
   expect(x, 2);
   assign();
   expect(a[5], 5);
-  return 0;
+  return;
 }
 
 enum { ENUM_A, ENUM_B, ENUM_C, ENUM_D, ENUM_E };
 
-int test_enum() {
+void test_enum() {
   enum {
     TYPE_A,
     TYPE_B,
@@ -166,10 +166,10 @@ int test_enum() {
   expect(TYPE_C, 2);
   expect(TYPE_D, 3);
 
-  return 0;
+  return;
 }
 
-int test_struct_sizeof() {
+void test_struct_sizeof() {
   expect(sizeof(struct {
            int a;
            char *b;
@@ -191,7 +191,7 @@ int test_struct_sizeof() {
          }),
          24);
 
-  return 0;
+  return;
 }
 
 struct _A {
@@ -201,7 +201,7 @@ struct _A {
   char d;
 } A;
 
-int test_struct() {
+void test_struct() {
   struct _B {
     int a;
     char b;
@@ -251,10 +251,10 @@ int test_struct() {
   expect_char(A.d, 22);
   expect_char(p->d, 22);
 
-  return 0;
+  return;
 }
 
-int test_typedef() {
+void test_typedef() {
   typedef int T;
   T x;
   x = 99;
@@ -274,7 +274,7 @@ int test_typedef() {
   expect(s.b, 78);
   expect(s.c, 79);
 
-  return 0;
+  return;
 }
 
 int main() {

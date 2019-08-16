@@ -9,11 +9,11 @@ int expect(int a, int b) {
   return 0;
 }
 
-int return_seven() { return 7; }
+int return_seven(void) { return 7; }
 
 int add_three_args(int x, int y, int z) { return x + y + z; }
 
-int test_func() {
+void test_func(void) {
   expect(return_seven(), 7);
   expect(return_seven() * 2 + 5, 19);
   expect(add_three_args(1, 2, 3), 6);
@@ -22,10 +22,10 @@ int test_func() {
   expect(3 * add_three_args(1, 2, 3), 18);
   expect(add_three_args(1, 2, 3) / 2, 3);
   expect(3 * add_three_args(1, 2, 3) / 2, 9);
-  return 0;
+  return;
 }
 
-int main() {
+int main(void) {
   printf("Testing function ...\n");
 
   test_func();

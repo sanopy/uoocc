@@ -81,6 +81,7 @@ enum {
   TK_FOR,      // for
   TK_INT,      // int
   TK_CHAR,     // char
+  TK_VOID,     // void
   TK_RETURN,   // return
   TK_ENUM,     // enum
   TK_STRUCT,   // struct
@@ -169,6 +170,7 @@ enum {
   TYPE_INT,
   TYPE_CHAR,
   TYPE_PTR,
+  TYPE_VOID,
   TYPE_ARRAY,
   TYPE_ENUM,
   TYPE_STRUCT,

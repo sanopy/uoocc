@@ -34,11 +34,11 @@ int fib(int n) {
     return fib(n - 1) + fib(n - 2);
 }
 
-int test_if() {
+void test_if() {
   expect(f1(), 2);
   expect(fact(5), 120);
   expect(fib(8), 21);
-  return 0;
+  return;
 }
 
 int f2() {
@@ -59,10 +59,10 @@ int sum1() {
   return sum;
 }
 
-int test_while() {
+void test_while() {
   expect(f2(), 10);
   expect(sum1(), 55);
-  return 0;
+  return;
 }
 
 int f3() {
@@ -81,10 +81,10 @@ int sum2() {
   return sum;
 }
 
-int test_for() {
+void test_for() {
   expect(f3(), 11);
   expect(sum2(), 55);
-  return 0;
+  return;
 }
 
 int main() {

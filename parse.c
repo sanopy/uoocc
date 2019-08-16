@@ -572,8 +572,8 @@ static int is_storage_class_cpecifier(Token *tk) {
 
 static int is_type_specifier(Token *tk) {
   int t = tk->type;
-  return t == TK_INT || t == TK_CHAR || t == TK_STRUCT || t == TK_ENUM ||
-         typedeftable_get(typedef_table, tk->text) != NULL;
+  return t == TK_INT || t == TK_CHAR || t == TK_VOID || t == TK_STRUCT ||
+         t == TK_ENUM || typedeftable_get(typedef_table, tk->text) != NULL;
 }
 
 // <enumerator_list_tail> = ε | ',' ident
@@ -674,8 +674,8 @@ static CType *struct_specifier() {
   return ret;
 }
 
-// <type_specifier> = 'int' | 'char' | <struct_specifier> | <enum_specifier> |
-//   <defined_type>
+// <type_specifier> = 'int' | 'char' | 'void' | <struct_specifier> |
+//   <enum_specifier> | <defined_type>
 static CType *type_specifier(void) {
   CType *ret;
   if (current_token()->type == TK_INT) {
@@ -683,6 +683,9 @@ static CType *type_specifier(void) {
     next_token();
   } else if (current_token()->type == TK_CHAR) {
     ret = make_ctype(TYPE_CHAR, NULL);
+    next_token();
+  } else if (current_token()->type == TK_VOID) {
+    ret = make_ctype(TYPE_VOID, NULL);
     next_token();
   } else if (current_token()->type == TK_STRUCT) {
     ret = struct_specifier();
@@ -760,7 +763,7 @@ static CType *type_name(void) {
 }
 
 // <decl_function> =
-//   '(' [ <declaration_specifiers> <pointer_opt> <ident>
+//   '(' [ <declaration_specifiers> <pointer_opt> [ <ident> ]
 //   { ',' <declaration_specifiers> <pointer_opt> <ident> } ] ')'
 static Ast *decl_function(Token *tk) {
   // current token is '(' when enter this function.
@@ -776,10 +779,15 @@ static Ast *decl_function(Token *tk) {
       if (current_token()->type == TK_STAR)
         ctype = pointer(ctype);
 
-      expect_token(current_token(), TK_IDENT);
-      vector_push_back(p->args, make_ast_decl_var(ctype, current_token()->text,
-                                                  current_token()));
-    } while (next_token()->type == TK_COMMA);
+      // skip ident when read void
+      if (ctype->type != TYPE_VOID) {
+        expect_token(current_token(), TK_IDENT);
+        vector_push_back(
+            p->args,
+            make_ast_decl_var(ctype, current_token()->text, current_token()));
+        next_token();
+      }
+    } while (current_token()->type == TK_COMMA);
     expect_token(current_token(), TK_RPAR);
   } else
     next_token();

@@ -1,22 +1,22 @@
 int cnt;
-int expect(int a, int b) {
+void expect(int a, int b) {
   if (a != b) {
     printf("Test %d: Failed\n", cnt++);
     printf("  %d expected, but got %d\n", b, a);
     exit(1);
   } else
     printf("Test %d: Passed\n", cnt++);
-  return 0;
+  return;
 }
 
-int test_number() {
+void test_number() {
   expect(0, 0);
   expect(2, 2);
   expect(9, 9);
-  return 0;
+  return;
 }
 
-int test_additive_expr() {
+void test_additive_expr() {
   expect(1 + 2, 3);
   expect(2 - 1, 1);
   expect(1 + 2 + 3, 6);
@@ -27,10 +27,10 @@ int test_additive_expr() {
   int x;
   x = 0 - 999;
   expect(1000 + x, 1);
-  return 0;
+  return;
 }
 
-int test_multiplicative_expr() {
+void test_multiplicative_expr() {
   expect(2 * 3, 6);
   expect(4 / 2, 2);
   expect(1 * 2 + 3, 5);
@@ -38,17 +38,17 @@ int test_multiplicative_expr() {
   expect(1 / 2 + 3, 3);
   expect(1 + 2 / 3, 1);
   expect(1 * 2 + 3 + 4 * 5 * 6 / 7, 22);
-  return 0;
+  return;
 }
 
-int test_primary_expr() {
+void test_primary_expr() {
   expect(6 - (5 - 4), 5);
   expect((1 + 2) * 3, 9);
   expect((1 + 2) * 3 + (4 + 5 + 6) * 2, 39);
-  return 0;
+  return;
 }
 
-int test_unary_expr() {
+void test_unary_expr() {
   int a;
   a = 1;
   expect(++a, 2);
@@ -82,20 +82,20 @@ int test_unary_expr() {
   expect(sizeof p, 8);
   expect(sizeof *p, 4);
 
-  return 0;
+  return;
 }
 
-int test_postfix_expr() {
+void test_postfix_expr() {
   int a;
   a = 1;
   expect(a++, 1);
   expect(a, 2);
   expect(a--, 2);
   expect(a, 1);
-  return 0;
+  return;
 }
 
-int test_shift_expr() {
+void test_shift_expr() {
   expect(1 << 1, 2);
   expect(1 << 2, 4);
   expect(1 << 3, 8);
@@ -105,10 +105,10 @@ int test_shift_expr() {
   expect(1024 >> 2, 256);
   expect(1024 >> 3, 128);
   expect(1024 >> 10, 1);
-  return 0;
+  return;
 }
 
-int test_relational_expr() {
+void test_relational_expr() {
   expect(3 < 5, 1);
   expect(5 < 5, 0);
   expect(3 <= 5, 1);
@@ -119,37 +119,37 @@ int test_relational_expr() {
   expect(5 >= 3, 1);
   expect(5 >= 5, 1);
   expect(3 >= 5, 0);
-  return 0;
+  return;
 }
 
-int test_equality_expr() {
+void test_equality_expr() {
   expect(25 == 25, 1);
   expect(10 + 5 == 3 * 5, 1);
   expect(23 == 39, 0);
-  return 0;
+  return;
 }
 
-int test_bitwise_expr() {
+void test_bitwise_expr() {
   expect(11 & 11, 11);
   expect(11 | 11, 11);
   expect(11 ^ 11, 0);
   expect(5 & 10, 0);
   expect(5 | 10, 15);
   expect(5 ^ 10, 15);
-  return 0;
+  return;
 }
 
-int test_logical_expr() {
+void test_logical_expr() {
   expect(1 && 1, 1);
   expect(1 && 0, 0);
   expect(0 && 0, 0);
   expect(1 || 1, 1);
   expect(1 || 0, 1);
   expect(0 || 0, 0);
-  return 0;
+  return;
 }
 
-int test_additive_ptr() {
+void test_additive_ptr() {
   int a[4];
   int *p;
   p = a;
@@ -164,18 +164,18 @@ int test_additive_ptr() {
   p = p + 3;
   expect(*(p - 2), 2);
   expect(p - a, 3);
-  return 0;
+  return;
 }
 
-int swap(int *p, int *q) {
+void swap(int *p, int *q) {
   int tmp;
   tmp = *p;
   *p = *q;
   *q = tmp;
-  return 0;
+  return;
 }
 
-int test_unary_ptr() {
+void test_unary_ptr() {
   int a[4];
   int *p;
   p = a;
@@ -202,10 +202,10 @@ int test_unary_ptr() {
   swap(&x, &y);
   expect(x, 9);
   expect(y, 15);
-  return 0;
+  return;
 }
 
-int test_postfix_ptr() {
+void test_postfix_ptr() {
   int a[4];
   int *p;
   p = a;
@@ -219,7 +219,7 @@ int test_postfix_ptr() {
   p = a + 3;
   expect(*(p--), 8);
   expect(*p, 4);
-  return 0;
+  return;
 }
 
 int main() {
