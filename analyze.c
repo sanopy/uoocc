@@ -335,14 +335,29 @@ Ast *semantic_analysis(Ast *p) {
       map_put(symbol_table, e);
       break;
     }
-    case AST_CALL_FUNC:
+    case AST_CALL_FUNC: {
+      SymbolTableEntry *e = symboltable_get(symbol_table, p->ident);
+      if (e == NULL)
+        p->ctype = make_ctype(TYPE_VOID, NULL);
+      else
+        p->ctype = e->ctype;
       for (int i = p->args->size - 1; i >= 0; i--) {
         Ast **q = (Ast **)p->args->data + i;
         *q = semantic_analysis(*q);
         *q = array_to_ptr(*q);
       }
       break;
-    case AST_DECL_FUNC:
+    }
+    case AST_DECL_FUNC: {
+      // register function to symbol table.
+      SymbolTableEntry *_e = make_SymbolTableEntry(p->ctype, 0);
+      MapEntry *e = allocate_MapEntry(p->ident, _e);
+      map_put(symbol_table, e);
+
+      // when function prototype
+      if (p->statement == NULL)
+        return NULL;
+
       symbol_table = p->symbol_table;
       offset_from_bp = 0;
       if (p->args->size > 6)
@@ -353,6 +368,7 @@ Ast *semantic_analysis(Ast *p) {
       symbol_table = symbol_table->next;
       p->offset_from_bp = offset_from_bp;
       break;
+    }
     case AST_COMPOUND_STATEMENT:
       for (int i = 0; i < p->statements->size; i++)
         p->statements->data[i] = semantic_analysis(vector_at(p->statements, i));

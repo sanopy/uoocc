@@ -74,9 +74,10 @@ static Ast *make_ast_call_func(char *ident) {
   return p;
 }
 
-static Ast *make_ast_decl_func(char *ident, Token *token) {
+static Ast *make_ast_decl_func(CType *ctype, char *ident, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = AST_DECL_FUNC;
+  p->ctype = ctype;
   p->ident = ident;
   p->token = token;
   p->args = vector_new();
@@ -521,7 +522,7 @@ static CType *pointer(CType *ctype) {
     return ctype;
 }
 
-static Ast *decl_function(Token *);
+static Ast *decl_function(CType *, Token *);
 
 // <direct_declarator_tail> = ε | '[' <number> ']' <direct_declarator_tail> |
 //   <decl_function>
@@ -545,7 +546,7 @@ static Ast *direct_declarator_tail(Token *ident, CType *ctype) {
     next_token();
     return direct_declarator_tail(ident, ctype);
   } else if (current_token()->type == TK_LPAR) {
-    return decl_function(ident);
+    return decl_function(ctype, ident);
   } else
     return make_ast_decl_var(ctype, ident->text, ident);
 }
@@ -765,9 +766,9 @@ static CType *type_name(void) {
 // <decl_function> =
 //   '(' [ <declaration_specifiers> <pointer_opt> [ <ident> ]
 //   { ',' <declaration_specifiers> <pointer_opt> <ident> } ] ')'
-static Ast *decl_function(Token *tk) {
+static Ast *decl_function(CType *ctype, Token *tk) {
   // current token is '(' when enter this function.
-  Ast *p = make_ast_decl_func(tk->text, tk);
+  Ast *p = make_ast_decl_func(ctype, tk->text, tk);
 
   if (second_token()->type != TK_RPAR) {
     do {
@@ -966,8 +967,13 @@ Vector *program(void) {
       expect_token(current_token(), TK_SEMI);
       next_token();
     } else if (p->type == AST_DECL_FUNC) {
-      expect_token(current_token(), TK_LCUR);
-      p->statement = compound_statement();
+      if (current_token()->type == TK_SEMI) {
+        p->statement = NULL;
+        next_token();
+      } else {
+        expect_token(current_token(), TK_LCUR);
+        p->statement = compound_statement();
+      }
     } else {
       error("declaration for variable or function was expected");
     }
