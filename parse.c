@@ -765,7 +765,7 @@ static CType *type_name(void) {
 
 // <decl_function> =
 //   '(' [ <declaration_specifiers> <pointer_opt> [ <ident> ]
-//   { ',' <declaration_specifiers> <pointer_opt> <ident> } ] ')'
+//   { ',' <declaration_specifiers> <pointer_opt> [ <ident> ] } ] ')'
 static Ast *decl_function(CType *ctype, Token *tk) {
   // current token is '(' when enter this function.
   Ast *p = make_ast_decl_func(ctype, tk->text, tk);
@@ -780,8 +780,9 @@ static Ast *decl_function(CType *ctype, Token *tk) {
       if (current_token()->type == TK_STAR)
         ctype = pointer(ctype);
 
-      // skip ident when read void
-      if (ctype->type != TYPE_VOID) {
+      // TODO: check exist ident when function declaration
+      // skip ident when function prototype
+      if (current_token()->type == TK_IDENT) {
         expect_token(current_token(), TK_IDENT);
         vector_push_back(
             p->args,

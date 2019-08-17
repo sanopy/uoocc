@@ -134,6 +134,12 @@ static CType *update_ctype(CType *ctype, Token *token) {
                          allocate_concat_3string("redefinition of '",
                                                  ctype->struct_tag, "'"));
       map_put(symbol_table, e);
+
+      Vector *v = ctype->struct_decl;
+      for (int i = 0; i < v->size; i++) {
+        StructMember *sm = vector_at(v, i);
+        update_ctype(sm->ctype, token);
+      }
     }
   }
   return ctype;

@@ -201,6 +201,8 @@ struct _A {
   char d;
 } A;
 
+void *malloc(int);
+
 void test_struct() {
   struct _B {
     int a;
@@ -250,6 +252,23 @@ void test_struct() {
   A.d = 22;
   expect_char(A.d, 22);
   expect_char(p->d, 22);
+
+  typedef struct _list {
+    int data;
+    struct _list *next;
+  } List;
+
+  List *l;
+  l = malloc(sizeof(List));
+  l->data = 4;
+  l->next = malloc(sizeof(List));
+  l->next->data = 8;
+  expect(sizeof(l), 8);
+  expect(sizeof(*l), 16);
+  expect(sizeof(l->next), 8);
+  expect(sizeof(*l->next), 16);
+  expect(l->data, 4);
+  expect(l->next->data, 8);
 
   return;
 }
