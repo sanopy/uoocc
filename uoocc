@@ -9,4 +9,4 @@ if [ ! -e cc.out ]; then
   make
 fi
 
-cat $1 | ./cc.out > tmp.s && gcc -static tmp.s -o $2 && rm -f tmp.s
+gcc -E -P $1 | ./cc.out > tmp.s && gcc -static tmp.s -o $2 && rm -f tmp.s

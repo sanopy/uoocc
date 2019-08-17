@@ -273,6 +273,21 @@ void test_struct() {
   return;
 }
 
+typedef struct _Node {
+  int data;
+  struct _Node *next;
+} Node;
+
+#define NULL (0)
+
+Node *new_node(int data) {
+  Node *p;
+  p = malloc(sizeof(Node));
+  p->data = data;
+  p->next = NULL;
+  return p;
+}
+
 void test_typedef() {
   typedef int T;
   T x;
@@ -292,6 +307,20 @@ void test_typedef() {
   expect(s.a, 77);
   expect(s.b, 78);
   expect(s.c, 79);
+
+  int i;
+  Node *list;
+  Node *p;
+  p = list = new_node(0);
+  for (i = 1; i <= 10; i++) {
+    p->next = new_node(i);
+    p = p->next;
+  }
+  p = list;
+  for (i = 0; i <= 10; i++) {
+    expect(p->data, i);
+    p = p->next;
+  }
 
   return;
 }

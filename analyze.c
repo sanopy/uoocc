@@ -128,17 +128,24 @@ static CType *update_ctype(CType *ctype, Token *token) {
       _e->is_struct_tag = 1;
       _e->ident = ctype->struct_tag;
       MapEntry *e = allocate_MapEntry(_e->ident, _e);
-      if (map_get(symbol_table, e->key) !=
-          NULL)  // already defined tag or variable.
-        error_with_token(token,
-                         allocate_concat_3string("redefinition of '",
-                                                 ctype->struct_tag, "'"));
+      SymbolTableEntry *p = symboltable_get(symbol_table, e->key);
+      if (p != NULL) {
+        // already defined tag or variable.
+        // TODO: redefinition struct tag
+        if (p->is_struct_tag == 1) {
+          return p->ctype;
+        } else {
+          error_with_token(token,
+                           allocate_concat_3string("redefinition of '",
+                                                   ctype->struct_tag, "'"));
+        }
+      }
       map_put(symbol_table, e);
 
       Vector *v = ctype->struct_decl;
       for (int i = 0; i < v->size; i++) {
         StructMember *sm = vector_at(v, i);
-        update_ctype(sm->ctype, token);
+        sm->ctype = update_ctype(sm->ctype, token);
       }
     }
   }
@@ -234,7 +241,10 @@ Ast *semantic_analysis(Ast *p) {
       p->left = array_to_ptr(p->left);
       p->right = array_to_ptr(p->right);
       if (p->left->ctype->type == TYPE_CHAR &&
-          p->right->ctype->type == TYPE_INT)
+          p->right->ctype->type == TYPE_INT)  // char <- int
+        ;
+      else if (p->left->ctype->type == TYPE_PTR &&
+               p->right->ctype->type == TYPE_INT)  // ptr <- int
         ;
       else if (p->left->type != AST_VAR && p->left->type != AST_OP_DEREF &&
                p->left->type != AST_OP_DOT)

@@ -696,7 +696,6 @@ static CType *type_specifier(void) {
   } else {
     CType *p = typedeftable_get(typedef_table, current_token()->text);
     ret = p->ptrof;
-    printf("type = %d\n", ret->type);
     next_token();
   }
 
