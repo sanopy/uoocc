@@ -93,9 +93,10 @@ static Ast *make_ast_compound_statement(void) {
   return p;
 }
 
-static Ast *make_ast_statement(int type) {
+static Ast *make_ast_statement(int type, Token *token) {
   Ast *p = malloc(sizeof(Ast));
   p->type = type;
+  p->token = token;
   return p;
 }
 
@@ -803,7 +804,7 @@ static Ast *statement(void);
 //   [ 'else' <statement> ]
 static Ast *selection_statement(void) {
   // current token is 'if' when enter this function.
-  Ast *p = make_ast_statement(AST_IF_STATEMENT);
+  Ast *p = make_ast_statement(AST_IF_STATEMENT, current_token());
 
   expect_token(next_token(), TK_LPAR);
   next_token();
@@ -830,7 +831,7 @@ static Ast *iteration_statement(void) {
   Ast *p;
 
   if (current_token()->type == TK_WHILE) {
-    p = make_ast_statement(AST_WHILE_STATEMENT);
+    p = make_ast_statement(AST_WHILE_STATEMENT, current_token());
 
     expect_token(next_token(), TK_LPAR);
     next_token();
@@ -839,7 +840,7 @@ static Ast *iteration_statement(void) {
     next_token();
     p->statement = statement();
   } else {
-    p = make_ast_statement(AST_FOR_STATEMENT);
+    p = make_ast_statement(AST_FOR_STATEMENT, current_token());
 
     expect_token(next_token(), TK_LPAR);
     next_token();
@@ -881,7 +882,7 @@ static Ast *compound_statement(void) {
 // <expr_statement> = <expr_opt> ';'
 static Ast *expr_statement(void) {
   if (current_token()->type != TK_SEMI) {
-    Ast *p = make_ast_statement(AST_EXPR_STATEMENT);
+    Ast *p = make_ast_statement(AST_EXPR_STATEMENT, NULL);
     p->expr = expr();
     expect_token(current_token(), TK_SEMI);
     next_token();
@@ -892,32 +893,45 @@ static Ast *expr_statement(void) {
   }
 }
 
-// <expr_statement> = 'return' <expr_opt> ';'
+// <jump_statement> = 'return' <expr_opt> ';' |
+//   'break' ';' | 'continue' ';'
 static Ast *jump_statement(void) {
-  // current token is 'return' when enter this function.
-  Ast *p = make_ast_statement(AST_RETURN_STATEMENT);
-  next_token();
-  if (current_token()->type != TK_SEMI) {
-    p->expr = expr();
-    expect_token(current_token(), TK_SEMI);
+  // current token is 'return', 'break' or 'continue' when enter this function.
+  Ast *p;
+  if (current_token()->type == TK_RETURN) {
+    p = make_ast_statement(AST_RETURN_STATEMENT, current_token());
     next_token();
+    if (current_token()->type != TK_SEMI) {
+      p->expr = expr();
+      expect_token(current_token(), TK_SEMI);
+      next_token();
+    } else {
+      next_token();
+      p->expr = NULL;
+    }
   } else {
+    if (current_token()->type == TK_BREAK)
+      p = make_ast_statement(AST_BREAK_STATEMENT, current_token());
+    else
+      p = make_ast_statement(AST_CONTINUE_STATEMENT, current_token());
+    expect_token(next_token(), TK_SEMI);
     next_token();
-    p->expr = NULL;
   }
+
   return p;
 }
 
 // <statement> = <selection_statement> | <iteration_statement> |
-//   <compound_statement> | <expr_statement>
+//   <compound_statement> | <jump_statement> | <expr_statement>
 static Ast *statement(void) {
-  if (current_token()->type == TK_IF)
+  int type = current_token()->type;
+  if (type == TK_IF)
     return selection_statement();
-  else if (current_token()->type == TK_WHILE || current_token()->type == TK_FOR)
+  else if (type == TK_WHILE || type == TK_FOR)
     return iteration_statement();
-  else if (current_token()->type == TK_LCUR)
+  else if (type == TK_LCUR)
     return compound_statement();
-  else if (current_token()->type == TK_RETURN)
+  else if (type == TK_RETURN || type == TK_BREAK || type == TK_CONTINUE)
     return jump_statement();
   else
     return expr_statement();

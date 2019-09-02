@@ -59,4 +59,6 @@ failtest '/*/' "unterminated comment."
 failtest 'struct { int a; int hoge(); } x;' "not member variable."
 failtest 'int main() { int x; return x.a; }' "cannot apply operator."
 failtest 'int main() { struct { int a; } x; return x.b; }' "not exist such member."
+failtest 'int main() { break; }' "not within loop or switch."
+failtest 'int main() { continue; }' "not within a loop."
 echo 'OK!'

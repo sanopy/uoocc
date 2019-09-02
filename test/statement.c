@@ -60,6 +60,10 @@ int sum1() {
 }
 
 void test_while() {
+  int i;
+  i = 0;
+  while (++i < 10)
+    expect(i < 10, 1 == 1);
   expect(f2(), 10);
   expect(sum1(), 55);
   return;
@@ -87,12 +91,51 @@ void test_for() {
   return;
 }
 
+void test_break() {
+  int i;
+  i = 0;
+  while (1 == 1) {
+    i++;
+    if (i == 5)
+      break;
+  }
+  expect(i, 5);
+
+  for (i = 0; 1 == 1; i++) {
+    if (i == 10)
+      break;
+  }
+  expect(i, 10);
+
+  return;
+}
+
+void test_continue() {
+  int i;
+  i = 0;
+  while (++i < 10) {
+    if (i < 5)
+      continue;
+    expect(i >= 5 && i < 10, 1 == 1);
+  }
+
+  for (i = 0; i < 10; i++) {
+    if (i < 5)
+      continue;
+    expect(i >= 5 && i < 10, 1 == 1);
+  }
+
+  return;
+}
+
 int main() {
   printf("Testing statement ...\n");
 
   test_if();
   test_while();
   test_for();
+  test_break();
+  test_continue();
 
   printf("OK!\n");
 

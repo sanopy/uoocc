@@ -46,6 +46,9 @@ static int get_shift_length(CType *ctype) {
     return 3;
 }
 
+int loop_start = -1;
+int loop_end = -1;
+
 void codegen(Ast *p) {
   if (p == NULL)
     return;
@@ -118,10 +121,16 @@ void codegen(Ast *p) {
       break;
     case AST_OP_POST_INC:
     case AST_OP_POST_DEC:
+      // TODO: char type
       emit_lvalue(p->left);
       printf("\tpopq %%rax\n");
-      printf("\tpushq (%%rax)\n");
-      // TODO: char type
+      if (ltype->type == TYPE_INT) {
+        printf("\tmovslq (%%rax), %%rdx\n");
+        printf("\tpushq %%rdx\n");
+      } else {
+        printf("\tpushq (%%rax)\n");
+      }
+
       if (ltype->type == TYPE_INT) {
         printf("\t%s (%%rax)\n", p->type == AST_OP_POST_INC ? "incl" : "decl");
       } else {
@@ -141,7 +150,8 @@ void codegen(Ast *p) {
         emit_lvalue(p->left);
         printf("\tpopq %%rax\n");
         printf("\t%s (%%rax)\n", p->type == AST_OP_PRE_INC ? "incl" : "decl");
-        printf("\tpushq (%%rax)\n");
+        printf("\tmovslq (%%rax), %%rax\n");
+        printf("\tpushq %%rax\n");
       } else {
         Ast *right =
             make_ast_op(p->type == AST_OP_PRE_INC ? AST_OP_ADD : AST_OP_SUB,
@@ -349,34 +359,47 @@ void codegen(Ast *p) {
       } else
         printf(".L%d:\n", seq1);
       break;
-    case AST_WHILE_STATEMENT: {
-      int seq1 = get_sequence_num(), seq2 = get_sequence_num();
-      printf(".L%d:\n", seq1);
+    case AST_WHILE_STATEMENT:
+      loop_start = get_sequence_num();
+      loop_end = get_sequence_num();
+
+      printf(".L%d:\n", loop_start);
+      printf("### starts cond here. ###\n");
       codegen(p->cond);
       printf("\tpopq %%rax\n");
       printf("\ttest %%rax, %%rax\n");
-      printf("\tjz .L%d\n", seq2);
+      printf("\tjz .L%d\n", loop_end);
+      printf("### ends cond here. ###\n");
+      printf("### starts stmt here. ###\n");
       codegen(p->statement);
-      printf("\tjmp .L%d\n", seq1);
-      printf(".L%d:\n", seq2);
+      printf("\tjmp .L%d\n", loop_start);
+      printf(".L%d:\n", loop_end);
+      printf("### ends stmt here. ###\n");
+
+      loop_start = loop_end = -1;  // reset labels
       break;
-    }
-    case AST_FOR_STATEMENT: {
-      int seq1 = get_sequence_num(), seq2 = get_sequence_num();
+    case AST_FOR_STATEMENT:
+      loop_start = get_sequence_num();
+      loop_end = get_sequence_num();
+      int after_step = get_sequence_num();
+
       codegen(p->init);
       printf("\tpopq %%rax\n");
-      printf(".L%d:\n", seq1);
+      printf("\tjmp .L%d\n", after_step);
+      printf(".L%d:\n", loop_start);
+      codegen(p->step);
+      printf("\tpopq %%rax\n");
+      printf(".L%d:\n", after_step);
       codegen(p->cond);
       printf("\tpopq %%rax\n");
       printf("\ttest %%rax, %%rax\n");
-      printf("\tjz .L%d\n", seq2);
+      printf("\tjz .L%d\n", loop_end);
       codegen(p->statement);
-      codegen(p->step);
-      printf("\tpopq %%rax\n");
-      printf("\tjmp .L%d\n", seq1);
-      printf(".L%d:\n", seq2);
+      printf("\tjmp .L%d\n", loop_start);
+      printf(".L%d:\n", loop_end);
+
+      loop_start = loop_end = -1;  // reset labels
       break;
-    }
     case AST_RETURN_STATEMENT:
       if (p->expr != NULL) {
         codegen(p->expr);
@@ -386,6 +409,18 @@ void codegen(Ast *p) {
       printf("\tpopq %%r12\n");
       printf("\tpopq %%rbp\n");
       printf("\tret\n");
+      break;
+    case AST_BREAK_STATEMENT:
+      if (loop_end == -1)
+        error_with_token(p->token, "not within loop or switch");
+
+      printf("\tjmp .L%d\n", loop_end);
+      break;
+    case AST_CONTINUE_STATEMENT:
+      if (loop_start == -1)
+        error_with_token(p->token, "not within a loop");
+
+      printf("\tjmp .L%d\n", loop_start);
       break;
   }
 }
