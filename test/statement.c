@@ -107,6 +107,15 @@ void test_break() {
   }
   expect(i, 10);
 
+  int val;
+  val = 55;
+  for (i = 0; i < 10; i++) {
+    while (1 == 1)
+      break;
+    val = 22;
+  }
+  expect(val, 22);
+
   return;
 }
 
@@ -124,6 +133,17 @@ void test_continue() {
       continue;
     expect(i >= 5 && i < 10, 1 == 1);
   }
+
+  int val;
+  val = 55;
+  for (i = 0; i < 10; i++) {
+    int j;
+    j = 0;
+    while (++j < 5)
+      continue;
+    val = 22;
+  }
+  expect(val, 22);
 
   return;
 }

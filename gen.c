@@ -359,26 +359,29 @@ void codegen(Ast *p) {
       } else
         printf(".L%d:\n", seq1);
       break;
-    case AST_WHILE_STATEMENT:
+    case AST_WHILE_STATEMENT: {
+      int tmp_s = loop_start;
+      int tmp_e = loop_end;
       loop_start = get_sequence_num();
       loop_end = get_sequence_num();
 
       printf(".L%d:\n", loop_start);
-      printf("### starts cond here. ###\n");
       codegen(p->cond);
       printf("\tpopq %%rax\n");
       printf("\ttest %%rax, %%rax\n");
       printf("\tjz .L%d\n", loop_end);
-      printf("### ends cond here. ###\n");
-      printf("### starts stmt here. ###\n");
       codegen(p->statement);
       printf("\tjmp .L%d\n", loop_start);
       printf(".L%d:\n", loop_end);
-      printf("### ends stmt here. ###\n");
 
-      loop_start = loop_end = -1;  // reset labels
+      // restore labels
+      loop_start = tmp_s;
+      loop_end = tmp_e;
       break;
-    case AST_FOR_STATEMENT:
+    }
+    case AST_FOR_STATEMENT: {
+      int tmp_s = loop_start;
+      int tmp_e = loop_end;
       loop_start = get_sequence_num();
       loop_end = get_sequence_num();
       int after_step = get_sequence_num();
@@ -398,8 +401,11 @@ void codegen(Ast *p) {
       printf("\tjmp .L%d\n", loop_start);
       printf(".L%d:\n", loop_end);
 
-      loop_start = loop_end = -1;  // reset labels
+      // restore labels
+      loop_start = tmp_s;
+      loop_end = tmp_e;
       break;
+    }
     case AST_RETURN_STATEMENT:
       if (p->expr != NULL) {
         codegen(p->expr);
